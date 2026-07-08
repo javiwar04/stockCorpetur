@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="StockControl.Api/StockControl.Api.csproj" />
+  <Project Path="StockControl.Application.Tests/StockControl.Application.Tests.csproj" />
+  <Project Path="StockControl.Application/StockControl.Application.csproj" />
+  <Project Path="StockControl.Domain/StockControl.Domain.csproj" />
+  <Project Path="StockControl.Infrastructure/StockControl.Infrastructure.csproj" />
+</Solution>

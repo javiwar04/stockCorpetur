@@ -1,0 +1,42 @@
+# Build output
+**/bin/
+**/obj/
+**/publish/
+publish/
+
+# Frontend
+StockFront/node_modules/
+StockFront/dist/
+StockFront/dist-ssr/
+
+# Local env/secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+appsettings.Local.json
+appsettings.*.Local.json
+*.local
+
+# Logs and temp files
+logs/
+*.log
+*.tmp
+*.bak
+*.sqlbak
+
+# IDE/OS
+.agents/
+.claude/
+.codex/
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.user
+*.suo
+*.ntvs*
+*.njsproj
+*.sw?

@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  color: #0f172a;
+  background-color: #f1f5f9;
+  background-image: radial-gradient(120% 120% at 100% 0%, #ecfdf5 0%, rgba(236, 253, 245, 0) 42%),
+    radial-gradient(120% 120% at 0% 100%, #f0fdfa 0%, rgba(240, 253, 250, 0) 40%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar sobria */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+/* Clases base compartidas: como @utility para poder componerlas con @apply. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+         transition active:translate-y-px focus:outline-none disabled:pointer-events-none disabled:opacity-50;
+}
+@utility badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset;
+}
+
+@layer components {
+  /* --- Tipografía de página --- */
+  .page-title {
+    @apply text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-slate-500;
+  }
+  .card-title {
+    @apply text-sm font-semibold text-slate-800;
+  }
+
+  /* --- Tarjetas --- */
+  .card {
+    @apply rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70;
+  }
+  .card-pad {
+    @apply p-5 sm:p-6;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4;
+  }
+
+  /* --- Formularios --- */
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-slate-600;
+  }
+  .field {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 transition
+           placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4
+           focus:ring-emerald-500/10 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400;
+  }
+
+  /* --- Botones --- */
+  .btn-primary {
+    @apply btn bg-slate-900 text-white shadow-sm hover:bg-slate-800;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 hover:ring-slate-400;
+  }
+  .btn-success {
+    @apply btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-500;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white shadow-sm hover:bg-rose-500;
+  }
+  .btn-sm {
+    @apply rounded-md px-3 py-1.5 text-xs;
+  }
+
+  /* --- Badges --- */
+  .badge-green {
+    @apply badge bg-emerald-50 text-emerald-700 ring-emerald-600/20;
+  }
+  .badge-slate {
+    @apply badge bg-slate-100 text-slate-600 ring-slate-500/15;
+  }
+  .badge-amber {
+    @apply badge bg-amber-50 text-amber-700 ring-amber-600/20;
+  }
+  .badge-red {
+    @apply badge bg-rose-50 text-rose-700 ring-rose-600/20;
+  }
+  .badge-sky {
+    @apply badge bg-sky-50 text-sky-700 ring-sky-600/20;
+  }
+
+  /* --- Tablas --- */
+  .thead {
+    @apply bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+  .th {
+    @apply px-5 py-3 whitespace-nowrap;
+  }
+  .trow {
+    @apply border-t border-slate-100 transition-colors hover:bg-slate-50/60;
+  }
+  .td {
+    @apply px-5 py-3;
+  }
+  .empty-cell {
+    @apply px-5 py-10 text-center text-sm text-slate-400;
+  }
+}
