@@ -234,6 +234,7 @@ public class CierreMensualService(
             .Include(d => d.Pagos)
             .Where(d => d.HotelId == hotelId
                         && d.Estado == EstadoDocumentoCompra.Recibido
+                        && (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel
                         && d.Fecha < fin)
             .ToListAsync(ct);
 

@@ -377,6 +377,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 .Include(d => d.Pagos)
                 .Where(d => d.Estado == EstadoDocumentoCompra.Recibido
                             && hotelIds.Contains(d.HotelId)
+                            && (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel
                             && d.Fecha < fin)
                 .ToListAsync(ct);
 

@@ -9,6 +9,8 @@ namespace StockControl.Domain.Entities;
 /// </summary>
 public class DocumentoCompra : EntidadBase
 {
+    public const string ObservacionImportadoExcel = "Importado de Excel";
+
     public DateOnly Fecha { get; set; }
 
     /// <summary>Número de documento / factura (obligatorio).</summary>

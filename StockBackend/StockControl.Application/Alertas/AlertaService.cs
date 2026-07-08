@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StockControl.Application.Common.Interfaces;
+using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
 
 namespace StockControl.Application.Alertas;
@@ -144,6 +145,7 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
             .Include(d => d.Pagos)
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido
                         && hotelIds.Contains(d.HotelId)
+                        && (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel
                         && d.Fecha <= hoy)
             .ToListAsync(ct);
 

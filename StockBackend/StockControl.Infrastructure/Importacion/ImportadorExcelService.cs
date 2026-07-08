@@ -97,7 +97,7 @@ public class ImportadorExcelService(IApplicationDbContext db) : IImportadorExcel
                     NumeroDocumento = numeroDoc,
                     HotelId = hotel.Id,
                     ProveedorId = proveedor.Id,
-                    Observaciones = "Importado de Excel",
+                    Observaciones = DocumentoCompra.ObservacionImportadoExcel,
                 };
 
                 var categoria = CategoriaProducto.Verdura;

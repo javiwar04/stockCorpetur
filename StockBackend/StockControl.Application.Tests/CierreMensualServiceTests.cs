@@ -69,6 +69,26 @@ public class CierreMensualServiceTests
     }
 
     [Fact]
+    public async Task Preview_IgnoraImportadosHistoricosEnCuentasPorPagar()
+    {
+        using var db = TestDb.Crear();
+        db.Proveedores.Single(p => p.Id == 1).DiasCredito = 0;
+        var historico = TestDb.AgregarCompra(db, 1, "CIE-HIST", new DateOnly(2026, 5, 1), 10, 5);
+        historico.Observaciones = DocumentoCompra.ObservacionImportadoExcel;
+        await db.SaveChangesAsync();
+
+        var service = new CierreMensualService(db, new CurrentUserFake(esAdmin: true));
+
+        var cierre = await service.PreviewAsync(1, 2026, 5);
+
+        Assert.Equal(50m, cierre.ComprasTotal);
+        Assert.Equal(50m, cierre.ValorInventarioEstimado);
+        Assert.Equal(0m, cierre.SaldoCuentasPorPagar);
+        Assert.Equal(0m, cierre.SaldoCuentasVencido);
+        Assert.Equal(0, cierre.DocumentosVencidos);
+    }
+
+    [Fact]
     public async Task Cerrar_GuardaSnapshotYNoPermiteDuplicarPeriodo()
     {
         using var db = TestDb.Crear();

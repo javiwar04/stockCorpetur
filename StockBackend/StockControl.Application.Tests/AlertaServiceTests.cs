@@ -41,4 +41,20 @@ public class AlertaServiceTests
         Assert.DoesNotContain(resultado.Alertas, a => a.Tipo == "CuentaVencida");
         Assert.DoesNotContain(resultado.Alertas, a => a.Tipo == "CierrePendiente");
     }
+
+    [Fact]
+    public async Task Listar_IgnoraCuentasVencidasImportadasHistoricas()
+    {
+        using var db = TestDb.Crear();
+        db.Proveedores.Single(p => p.Id == 1).DiasCredito = 0;
+        var historico = TestDb.AgregarCompra(db, 1, "ALT-HIST", new DateOnly(2000, 1, 1), 10, 5);
+        historico.Observaciones = DocumentoCompra.ObservacionImportadoExcel;
+        await db.SaveChangesAsync();
+
+        var service = new AlertaService(db, new CurrentUserFake(esAdmin: true));
+
+        var resultado = await service.ListarAsync();
+
+        Assert.DoesNotContain(resultado.Alertas, a => a.Tipo == "CuentaVencida");
+    }
 }

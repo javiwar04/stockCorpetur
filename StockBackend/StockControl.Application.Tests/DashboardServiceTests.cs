@@ -165,6 +165,26 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task Gerencial_IgnoraImportadosHistoricosEnFinanzasPeroConservaInventario()
+    {
+        using var db = TestDb.Crear();
+        db.Proveedores.Single(p => p.Id == 1).DiasCredito = 0;
+        var historico = TestDb.AgregarCompra(db, 1, "GER-HIST", new DateOnly(2026, 5, 1), 10, 5);
+        historico.Observaciones = DocumentoCompra.ObservacionImportadoExcel;
+        await db.SaveChangesAsync();
+
+        var service = new DashboardService(db, new CurrentUserFake(esAdmin: true));
+
+        var gerencial = await service.GerencialAsync(2026, 5);
+
+        Assert.Equal(50m, gerencial.ValorInventarioEstimado);
+        Assert.True(gerencial.IncluyeFinanzas);
+        Assert.Equal(0m, gerencial.SaldoCuentasPorPagar);
+        Assert.Equal(0m, gerencial.SaldoCuentasVencido);
+        Assert.Empty(gerencial.TopProveedoresSaldo);
+    }
+
+    [Fact]
     public async Task Gerencial_DigitadorNoRecibeMetricasFinancieras()
     {
         using var db = TestDb.Crear();

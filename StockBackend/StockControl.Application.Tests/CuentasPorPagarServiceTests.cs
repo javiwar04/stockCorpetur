@@ -1,4 +1,5 @@
 using StockControl.Application.CuentasPorPagar;
+using StockControl.Domain.Entities;
 
 namespace StockControl.Application.Tests;
 
@@ -22,6 +23,44 @@ public class CuentasPorPagarServiceTests
         Assert.Equal("Vencido", cuenta.Estado);
         Assert.Equal(new DateOnly(2000, 1, 16), cuenta.FechaVencimiento);
         Assert.Equal(50m, resultado.Resumen.SaldoVencido);
+    }
+
+    [Fact]
+    public async Task Listar_IgnoraDocumentosImportadosHistoricos()
+    {
+        using var db = TestDb.Crear();
+        db.Proveedores.Single(p => p.Id == 1).DiasCredito = 0;
+        var historico = TestDb.AgregarCompra(db, 1, "HIST-CXP", new DateOnly(2000, 1, 1), 10, 5);
+        historico.Observaciones = DocumentoCompra.ObservacionImportadoExcel;
+        await db.SaveChangesAsync();
+
+        var service = new CuentasPorPagarService(db, new CurrentUserFake(esAdmin: true));
+
+        var resultado = await service.ListarAsync(new FiltroCuentasPorPagar(null, null, null, null));
+
+        Assert.Empty(resultado.Cuentas);
+        Assert.Equal(0m, resultado.Resumen.SaldoPendiente);
+        Assert.Equal(0m, resultado.Resumen.SaldoVencido);
+    }
+
+    [Fact]
+    public async Task RegistrarPago_NoPermitePagarDocumentosImportadosHistoricos()
+    {
+        using var db = TestDb.Crear();
+        var historico = TestDb.AgregarCompra(db, 1, "HIST-PAGO", new DateOnly(2099, 1, 1), 10, 5);
+        historico.Observaciones = DocumentoCompra.ObservacionImportadoExcel;
+        await db.SaveChangesAsync();
+
+        var service = new CuentasPorPagarService(db, new CurrentUserFake(esAdmin: true));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.RegistrarPagoAsync(new RegistrarPagoProveedorRequest(
+                historico.Id,
+                new DateOnly(2099, 1, 2),
+                10,
+                "Transferencia",
+                null,
+                null)));
     }
 
     [Fact]
