@@ -8,6 +8,8 @@ namespace StockControl.Domain.Entities;
 /// </summary>
 public class Proveedor : EntidadBase
 {
+    public const string NombreProveedorImportacionExcel = "Desconocido (importación)";
+
     public string Nombre { get; set; } = null!;
     public string? Nit { get; set; }
     public string? Telefono { get; set; }

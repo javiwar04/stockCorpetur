@@ -17,7 +17,6 @@ namespace StockControl.Infrastructure.Importacion;
 /// </summary>
 public class ImportadorExcelService(IApplicationDbContext db) : IImportadorExcelService
 {
-    private const string NombreProveedorImportacion = "Desconocido (importación)";
     private const int ColumnaCategoria = 2;   // B
     private const int ColumnaProducto = 7;    // G
     private const int PrimeraColumnaDocs = 8; // H
@@ -156,10 +155,10 @@ public class ImportadorExcelService(IApplicationDbContext db) : IImportadorExcel
 
     private async Task<Proveedor> ObtenerOCrearProveedorAsync(CancellationToken ct)
     {
-        var proveedor = await db.Proveedores.FirstOrDefaultAsync(p => p.Nombre == NombreProveedorImportacion, ct);
+        var proveedor = await db.Proveedores.FirstOrDefaultAsync(p => p.Nombre == Proveedor.NombreProveedorImportacionExcel, ct);
         if (proveedor is not null) return proveedor;
 
-        proveedor = new Proveedor { Nombre = NombreProveedorImportacion };
+        proveedor = new Proveedor { Nombre = Proveedor.NombreProveedorImportacionExcel };
         db.Proveedores.Add(proveedor);
         await db.SaveChangesAsync(ct);
         return proveedor;

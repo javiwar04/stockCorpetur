@@ -44,6 +44,24 @@ public class CuentasPorPagarServiceTests
     }
 
     [Fact]
+    public async Task Listar_IgnoraDocumentosConProveedorDeImportacionAunqueNoTenganObservacion()
+    {
+        using var db = TestDb.Crear();
+        var proveedorImportacion = new Proveedor { Id = 99, Nombre = Proveedor.NombreProveedorImportacionExcel };
+        db.Proveedores.Add(proveedorImportacion);
+        TestDb.AgregarCompra(db, 1, "HIST-PROV", new DateOnly(2000, 1, 1), 10, 5).ProveedorId = proveedorImportacion.Id;
+        await db.SaveChangesAsync();
+
+        var service = new CuentasPorPagarService(db, new CurrentUserFake(esAdmin: true));
+
+        var resultado = await service.ListarAsync(new FiltroCuentasPorPagar(null, null, null, null));
+
+        Assert.Empty(resultado.Cuentas);
+        Assert.Equal(0m, resultado.Resumen.SaldoPendiente);
+        Assert.Equal(0m, resultado.Resumen.SaldoVencido);
+    }
+
+    [Fact]
     public async Task RegistrarPago_NoPermitePagarDocumentosImportadosHistoricos()
     {
         using var db = TestDb.Crear();

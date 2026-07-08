@@ -1206,6 +1206,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             .Include(d => d.Pagos).ThenInclude(p => p.Proveedor)
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido)
             .Where(d => (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel)
+            .Where(d => d.Proveedor.Nombre != Proveedor.NombreProveedorImportacionExcel)
             .AsQueryable();
 
         if (!currentUser.EsAdmin && !currentUser.EsGerencia)

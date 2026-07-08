@@ -57,4 +57,20 @@ public class AlertaServiceTests
 
         Assert.DoesNotContain(resultado.Alertas, a => a.Tipo == "CuentaVencida");
     }
+
+    [Fact]
+    public async Task Listar_IgnoraCuentasVencidasConProveedorDeImportacion()
+    {
+        using var db = TestDb.Crear();
+        db.Proveedores.Add(new Proveedor { Id = 99, Nombre = Proveedor.NombreProveedorImportacionExcel });
+        var historico = TestDb.AgregarCompra(db, 1, "ALT-PROV-HIST", new DateOnly(2000, 1, 1), 10, 5);
+        historico.ProveedorId = 99;
+        await db.SaveChangesAsync();
+
+        var service = new AlertaService(db, new CurrentUserFake(esAdmin: true));
+
+        var resultado = await service.ListarAsync();
+
+        Assert.DoesNotContain(resultado.Alertas, a => a.Tipo == "CuentaVencida");
+    }
 }

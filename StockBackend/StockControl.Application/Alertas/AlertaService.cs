@@ -146,6 +146,7 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido
                         && hotelIds.Contains(d.HotelId)
                         && (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel
+                        && d.Proveedor.Nombre != Proveedor.NombreProveedorImportacionExcel
                         && d.Fecha <= hoy)
             .ToListAsync(ct);
 

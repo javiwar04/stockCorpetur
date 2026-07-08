@@ -27,6 +27,7 @@ public class CuentasPorPagarService(
             .Include(d => d.Pagos).ThenInclude(p => p.Proveedor)
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido)
             .Where(d => (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel)
+            .Where(d => d.Proveedor.Nombre != Proveedor.NombreProveedorImportacionExcel)
             .AsQueryable();
 
         if (!currentUser.EsAdmin && !currentUser.EsGerencia)
@@ -202,7 +203,8 @@ public class CuentasPorPagarService(
 
     private static int DiasVencido(DateOnly fechaVencimiento, DateOnly hoy) => hoy.DayNumber - fechaVencimiento.DayNumber;
     private static bool EsImportadoHistorico(DocumentoCompra documento) =>
-        documento.Observaciones == DocumentoCompra.ObservacionImportadoExcel;
+        documento.Observaciones == DocumentoCompra.ObservacionImportadoExcel
+        || documento.Proveedor.Nombre == Proveedor.NombreProveedorImportacionExcel;
 
     private async Task AuditarAsync(
         string accion,
