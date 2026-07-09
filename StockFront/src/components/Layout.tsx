@@ -59,6 +59,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const LOGO_SISTEMA = '/logoSistema%28Paralogin%20y%20favicon%29.png';
+const SIDEBAR_MINI_KEY = 'stockcontrol-sidebar-mini';
 
 // Ícono outline por ruta (solo presentación).
 function NavIcon({ to }: { to: string }) {
@@ -98,6 +99,10 @@ export function Layout() {
   const { usuario, tieneRol, logout } = useAuth();
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [sidebarMini, setSidebarMini] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(SIDEBAR_MINI_KEY) === '1';
+  });
   const { data: resumenAlertas } = useQuery({
     queryKey: ['alertas-resumen'],
     queryFn: obtenerResumenAlertas,
@@ -108,6 +113,16 @@ export function Layout() {
   const salir = () => {
     logout();
     navigate('/login', { replace: true });
+  };
+
+  const alternarSidebar = () => {
+    setSidebarMini((actual) => {
+      const siguiente = !actual;
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SIDEBAR_MINI_KEY, siguiente ? '1' : '0');
+      }
+      return siguiente;
+    });
   };
 
   const gruposVisibles = NAV_GROUPS.map((g) => ({
@@ -122,25 +137,44 @@ export function Layout() {
     .join('')
     .toUpperCase();
 
-  const barra = (
+  const renderBarra = (mini = false, colapsable = false) => (
     <div
       className="flex h-full flex-col bg-slate-950 text-slate-300"
       style={{ backgroundImage: 'radial-gradient(135% 55% at 50% 0%, rgba(16,185,129,0.12), rgba(2,6,23,0) 58%)' }}
     >
-      <div className="flex items-center gap-3 px-5 py-5">
+      <div className={mini ? 'flex flex-col items-center gap-3 px-3 py-4' : 'flex items-center gap-3 px-5 py-5'}>
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-white/10">
           <img src={LOGO_SISTEMA} alt="" className="h-full w-full rounded-lg object-contain" />
         </div>
-        <div>
-          <div className="text-[15px] font-semibold tracking-tight text-white">StockControl</div>
-          <div className="text-[11px] text-cyan-200/75">Compras e inventario</div>
-        </div>
+        {!mini && (
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[15px] font-semibold tracking-tight text-white">StockControl</div>
+            <div className="truncate text-[11px] text-cyan-200/75">Compras e inventario</div>
+          </div>
+        )}
+        {colapsable && (
+          <button
+            type="button"
+            onClick={alternarSidebar}
+            title={mini ? 'Expandir menú' : 'Minimizar menú'}
+            aria-label={mini ? 'Expandir menú' : 'Minimizar menú'}
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d={mini ? 'M8.25 4.5 15.75 12l-7.5 7.5M3.75 12h12' : 'M15.75 4.5 8.25 12l7.5 7.5M20.25 12h-12'}
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-3">
+      <nav className={mini ? 'flex-1 overflow-y-auto px-2 pb-3' : 'flex-1 overflow-y-auto px-3 pb-3'}>
         {gruposVisibles.map((grupo, index) => (
-          <section key={grupo.title} className={index === 0 ? 'pt-1' : 'mt-3 border-t border-white/[0.06] pt-3'}>
-            <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <section key={grupo.title} className={index === 0 ? 'pt-1' : mini ? 'mt-2 border-t border-white/[0.06] pt-2' : 'mt-3 border-t border-white/[0.06] pt-3'}>
+            <div className={mini ? 'sr-only' : 'mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500'}>
               {grupo.title}
             </div>
             <div className="space-y-0.5">
@@ -150,8 +184,12 @@ export function Layout() {
                   to={n.to}
                   end={n.to === '/'}
                   onClick={() => setMenuAbierto(false)}
+                  title={mini ? n.label : undefined}
+                  aria-label={mini ? n.label : undefined}
                   className={({ isActive }) =>
-                    `group relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                    `group relative flex items-center rounded-lg text-sm transition-colors ${
+                      mini ? 'h-10 justify-center px-0' : 'gap-3 px-3 py-1.5'
+                    } ${
                       isActive ? 'bg-white/[0.06] font-medium text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white'
                     }`
                   }
@@ -159,16 +197,24 @@ export function Layout() {
                   {({ isActive }) => (
                     <>
                       <span
-                        className={`absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-emerald-400 transition-opacity ${
+                        className={`absolute top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-emerald-400 transition-opacity ${
+                          mini ? '-left-2' : '-left-3'
+                        } ${
                           isActive ? 'opacity-100' : 'opacity-0'
                         }`}
                       />
                       <span className={isActive ? 'text-emerald-400' : 'text-slate-500 transition-colors group-hover:text-slate-300'}>
                         <NavIcon to={n.to} />
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{n.label}</span>
+                      {!mini && <span className="min-w-0 flex-1 truncate">{n.label}</span>}
                       {n.to === '/alertas' && totalAlertas > 0 && (
-                        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                        <span
+                          className={
+                            mini
+                              ? 'absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold leading-none text-white'
+                              : 'rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white'
+                          }
+                        >
                           {totalAlertas > 99 ? '99+' : totalAlertas}
                         </span>
                       )}
@@ -181,15 +227,17 @@ export function Layout() {
         ))}
       </nav>
 
-      <div className="border-t border-white/10 p-3">
-        <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+      <div className={mini ? 'border-t border-white/10 p-2' : 'border-t border-white/10 p-3'}>
+        <div className={mini ? 'flex flex-col items-center gap-2 rounded-xl px-0 py-2' : 'flex items-center gap-3 rounded-xl px-2 py-2'}>
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-500/15 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/20">
             {iniciales}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-white">{usuario?.nombre}</div>
-            <div className="truncate text-[11px] text-slate-400">{usuario?.roles.join(', ')}</div>
-          </div>
+          {!mini && (
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-white">{usuario?.nombre}</div>
+              <div className="truncate text-[11px] text-slate-400">{usuario?.roles.join(', ')}</div>
+            </div>
+          )}
           <button
             onClick={salir}
             title="Cerrar sesión"
@@ -211,15 +259,15 @@ export function Layout() {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar fijo (desktop) */}
-      <aside className="hidden w-64 shrink-0 lg:block">
-        <div className="sticky top-0 h-screen">{barra}</div>
+      <aside className={`hidden shrink-0 transition-[width] duration-200 lg:block ${sidebarMini ? 'w-20' : 'w-64'}`}>
+        <div className="sticky top-0 h-screen">{renderBarra(sidebarMini, true)}</div>
       </aside>
 
       {/* Drawer (móvil) */}
       {menuAbierto && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={() => setMenuAbierto(false)} />
-          <aside className="absolute left-0 top-0 h-full w-64 shadow-xl">{barra}</aside>
+          <aside className="absolute left-0 top-0 h-full w-64 shadow-xl">{renderBarra(false, false)}</aside>
         </div>
       )}
 
@@ -239,7 +287,7 @@ export function Layout() {
           <span className="text-sm font-semibold text-slate-800">StockControl</span>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
       </div>
