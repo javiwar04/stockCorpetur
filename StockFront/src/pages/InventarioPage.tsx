@@ -361,8 +361,8 @@ export function InventarioPage() {
         {error && (
           <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{error}</div>
         )}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[170px_145px_minmax(180px,1fr)_150px_130px_minmax(180px,1fr)_auto] xl:items-end">
-          <div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12 xl:items-end">
+          <div className="xl:col-span-2">
             <label className="label">Tipo</label>
             <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="field">
               {TIPOS.map((t) => (
@@ -372,11 +372,11 @@ export function InventarioPage() {
               ))}
             </select>
           </div>
-          <div>
+          <div className="xl:col-span-2">
             <label className="label">Fecha</label>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="field" />
           </div>
-          <div>
+          <div className="xl:col-span-3">
             <label className="label">Producto</label>
             <select
               value={productoId}
@@ -392,7 +392,7 @@ export function InventarioPage() {
               ))}
             </select>
           </div>
-          <div>
+          <div className="xl:col-span-2">
             <label className="label">Unidad</label>
             <select
               value={unidadId}
@@ -409,7 +409,7 @@ export function InventarioPage() {
               ))}
             </select>
           </div>
-          <div>
+          <div className="xl:col-span-3">
             <label className="label">Cantidad</label>
             <input
               type="number"
@@ -420,7 +420,7 @@ export function InventarioPage() {
               className="field"
             />
           </div>
-          <div>
+          <div className="md:col-span-2 xl:col-span-9">
             <label className="label">Referencia</label>
             <input
               value={referencia}
@@ -429,9 +429,11 @@ export function InventarioPage() {
               className="field"
             />
           </div>
-          <button type="submit" disabled={registrarMutation.isPending} className="btn-primary">
-            {registrarMutation.isPending ? 'Guardando…' : 'Registrar'}
-          </button>
+          <div className="md:col-span-2 xl:col-span-3">
+            <button type="submit" disabled={registrarMutation.isPending} className="btn-primary w-full justify-center whitespace-nowrap">
+              {registrarMutation.isPending ? 'Guardando…' : 'Registrar movimiento'}
+            </button>
+          </div>
         </div>
       </form>
 
