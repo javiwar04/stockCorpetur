@@ -5,7 +5,7 @@ Requires=docker.service
 
 [Service]
 WorkingDirectory=/opt/stockcontrol/api
-ExecStart=/usr/bin/dotnet /opt/stockcontrol/api/StockControl.Api.dll
+ExecStart=/opt/stockcontrol/api/StockControl.Api
 Restart=always
 RestartSec=10
 KillSignal=SIGINT

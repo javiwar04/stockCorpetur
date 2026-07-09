@@ -11,21 +11,51 @@ interface NavItem {
   roles?: Rol[];
 }
 
-const NAV: NavItem[] = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/documentos', label: 'Documentos' },
-  { to: '/inventario', label: 'Inventario' },
-  { to: '/conteos', label: 'Conteos' },
-  { to: '/alertas', label: 'Alertas' },
-  { to: '/productos', label: 'Productos' },
-  { to: '/proveedores', label: 'Proveedores' },
-  { to: '/platos', label: 'Menú y recetas', roles: ['Admin', 'Gerencia'] },
-  { to: '/reportes', label: 'Reportes', roles: ['Admin', 'Gerencia'] },
-  { to: '/cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['Admin', 'Gerencia'] },
-  { to: '/cierres', label: 'Cierre mensual', roles: ['Admin', 'Gerencia'] },
-  { to: '/auditoria', label: 'Auditoria', roles: ['Admin', 'Gerencia'] },
-  { to: '/gestion', label: 'Gestión mensual', roles: ['Admin', 'Gerencia'] },
-  { to: '/usuarios', label: 'Usuarios', roles: ['Admin'] },
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Inicio',
+    items: [
+      { to: '/', label: 'Dashboard' },
+      { to: '/alertas', label: 'Alertas' },
+    ],
+  },
+  {
+    title: 'Operación',
+    items: [
+      { to: '/documentos', label: 'Documentos' },
+      { to: '/inventario', label: 'Inventario' },
+      { to: '/conteos', label: 'Conteos' },
+    ],
+  },
+  {
+    title: 'Catálogos',
+    items: [
+      { to: '/productos', label: 'Productos' },
+      { to: '/proveedores', label: 'Proveedores' },
+      { to: '/platos', label: 'Menú y recetas', roles: ['Admin', 'Gerencia'] },
+    ],
+  },
+  {
+    title: 'Finanzas',
+    items: [
+      { to: '/reportes', label: 'Reportes', roles: ['Admin', 'Gerencia'] },
+      { to: '/cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['Admin', 'Gerencia'] },
+      { to: '/cierres', label: 'Cierre mensual', roles: ['Admin', 'Gerencia'] },
+      { to: '/gestion', label: 'Gestión mensual', roles: ['Admin', 'Gerencia'] },
+    ],
+  },
+  {
+    title: 'Administración',
+    items: [
+      { to: '/auditoria', label: 'Auditoría', roles: ['Admin', 'Gerencia'] },
+      { to: '/usuarios', label: 'Usuarios', roles: ['Admin'] },
+    ],
+  },
 ];
 
 const LOGO_SISTEMA = '/logoSistema%28Paralogin%20y%20favicon%29.png';
@@ -80,7 +110,10 @@ export function Layout() {
     navigate('/login', { replace: true });
   };
 
-  const visibles = NAV.filter((n) => !n.roles || tieneRol(...n.roles));
+  const gruposVisibles = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((n) => !n.roles || tieneRol(...n.roles)),
+  })).filter((g) => g.items.length > 0);
 
   const iniciales = (usuario?.nombre ?? '?')
     .split(' ')
@@ -104,38 +137,47 @@ export function Layout() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
-        {visibles.map((n) => (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            end={n.to === '/'}
-            onClick={() => setMenuAbierto(false)}
-            className={({ isActive }) =>
-              `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                isActive ? 'bg-white/[0.06] font-medium text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <span
-                  className={`absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-emerald-400 transition-opacity ${
-                    isActive ? 'opacity-100' : 'opacity-0'
-                  }`}
-                />
-                <span className={isActive ? 'text-emerald-400' : 'text-slate-500 transition-colors group-hover:text-slate-300'}>
-                  <NavIcon to={n.to} />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{n.label}</span>
-                {n.to === '/alertas' && totalAlertas > 0 && (
-                  <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-                    {totalAlertas > 99 ? '99+' : totalAlertas}
-                  </span>
-                )}
-              </>
-            )}
-          </NavLink>
+      <nav className="flex-1 overflow-y-auto px-3 pb-3">
+        {gruposVisibles.map((grupo, index) => (
+          <section key={grupo.title} className={index === 0 ? 'pt-1' : 'mt-3 border-t border-white/[0.06] pt-3'}>
+            <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              {grupo.title}
+            </div>
+            <div className="space-y-0.5">
+              {grupo.items.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.to === '/'}
+                  onClick={() => setMenuAbierto(false)}
+                  className={({ isActive }) =>
+                    `group relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                      isActive ? 'bg-white/[0.06] font-medium text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={`absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-emerald-400 transition-opacity ${
+                          isActive ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      />
+                      <span className={isActive ? 'text-emerald-400' : 'text-slate-500 transition-colors group-hover:text-slate-300'}>
+                        <NavIcon to={n.to} />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{n.label}</span>
+                      {n.to === '/alertas' && totalAlertas > 0 && (
+                        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                          {totalAlertas > 99 ? '99+' : totalAlertas}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </section>
         ))}
       </nav>
 

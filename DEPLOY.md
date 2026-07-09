@@ -21,7 +21,6 @@ Requisitos:
 
 - Docker y Docker Compose.
 - Nginx.
-- ASP.NET Core Runtime compatible con `net10.0`.
 - Certbot si vas a emitir SSL con Let's Encrypt.
 
 ## SQL Server Docker
@@ -61,16 +60,23 @@ La app aplica migraciones automaticamente al arrancar. Si la base esta vacia, ta
 
 ## Publicar backend
 
-Desde el proyecto:
+Desde el proyecto, publica self-contained para Linux para no depender del runtime instalado en el VPS:
 
 ```bash
-dotnet publish StockBackend/StockControl.Api/StockControl.Api.csproj -c Release -o publish/stockcontrol-api
+dotnet publish StockBackend/StockControl.Api/StockControl.Api.csproj -c Release -r linux-x64 --self-contained true -o publish/stockcontrol-api
 ```
 
 Copia el contenido de `publish/stockcontrol-api` al VPS en:
 
 ```bash
 /opt/stockcontrol/api
+```
+
+Despues de descomprimirlo en el VPS:
+
+```bash
+sudo chmod +x /opt/stockcontrol/api/StockControl.Api
+sudo chown -R www-data:www-data /opt/stockcontrol/api
 ```
 
 Instala systemd:
