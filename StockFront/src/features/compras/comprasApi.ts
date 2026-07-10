@@ -1,7 +1,7 @@
 import { api } from '../../lib/api';
 import type { CrearDocumentoCompraRequest, DocumentoCompra, DocumentoCompraResumen } from './types';
 
-export const listarDocumentos = (params?: { hotelId?: number; desde?: string; hasta?: string }) =>
+export const listarDocumentos = (params?: { hotelId?: number; proveedorId?: number; desde?: string; hasta?: string }) =>
   api.get<DocumentoCompraResumen[]>('/api/documentos', { params }).then((r) => r.data);
 
 export const obtenerDocumento = (id: number) =>

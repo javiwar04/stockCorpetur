@@ -30,7 +30,9 @@ export interface DocumentoCompraResumen {
   id: number;
   fecha: string;
   numeroDocumento: string;
+  hotelId: number;
   hotelNombre: string;
+  proveedorId: number;
   proveedorNombre: string;
   estado: EstadoDocumentoCompra;
   total: number;

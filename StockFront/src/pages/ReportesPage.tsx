@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listarHoteles, listarProveedores } from '../features/catalogos/catalogosApi';
+import { listarDocumentos } from '../features/compras/comprasApi';
 import {
   descargarExcel,
   descargarPdf,
@@ -8,6 +9,13 @@ import {
   type ResultadoImportacion,
 } from '../features/reportes/reportesApi';
 import { useAuth } from '../features/auth/authStore';
+
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const fechaInput = (fecha: Date) => {
+  const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+};
 
 export function ReportesPage() {
   const qc = useQueryClient();
@@ -32,21 +40,49 @@ export function ReportesPage() {
   const [resultados, setResultados] = useState<ResultadoArchivo[]>([]);
   const [importando, setImportando] = useState(false);
 
-  const filtro = {
-    hotelId: hotelId === '' ? undefined : Number(hotelId),
-    proveedorId: proveedorId === '' ? undefined : Number(proveedorId),
-    desde: desde || undefined,
-    hasta: hasta || undefined,
+  const filtro = useMemo(
+    () => ({
+      hotelId: hotelId === '' ? undefined : Number(hotelId),
+      proveedorId: proveedorId === '' ? undefined : Number(proveedorId),
+      desde: desde || undefined,
+      hasta: hasta || undefined,
+    }),
+    [hotelId, proveedorId, desde, hasta],
+  );
+
+  const { data: documentosPeriodo, isLoading: cargandoResumen } = useQuery({
+    queryKey: ['documentos', 'reportes-resumen', filtro],
+    queryFn: () => listarDocumentos(filtro),
+  });
+
+  const resumenPeriodo = useMemo(() => {
+    const recibidos = (documentosPeriodo ?? []).filter((d) => d.estado === 'Recibido');
+    const gasto = recibidos.reduce((acc, d) => acc + d.total, 0);
+    return {
+      gasto,
+      documentos: recibidos.length,
+      promedio: recibidos.length ? gasto / recibidos.length : 0,
+      proveedores: new Set(recibidos.map((d) => d.proveedorId)).size,
+      hoteles: new Set(recibidos.map((d) => d.hotelId)).size,
+    };
+  }, [documentosPeriodo]);
+
+  const usarSemanaActual = () => {
+    const hoy = new Date();
+    const dia = hoy.getDay();
+    const diasDesdeLunes = dia === 0 ? 6 : dia - 1;
+    const inicio = new Date(hoy);
+    inicio.setDate(hoy.getDate() - diasDesdeLunes);
+    const fin = new Date(inicio);
+    fin.setDate(inicio.getDate() + 6);
+    setDesde(fechaInput(inicio));
+    setHasta(fechaInput(fin));
   };
 
   const usarMesActual = () => {
     const hoy = new Date();
     const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-    const fechaInput = (fecha: Date) => {
-      const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
-      return local.toISOString().slice(0, 10);
-    };
     setDesde(fechaInput(inicio));
     setHasta(fechaInput(fin));
   };
@@ -150,6 +186,9 @@ export function ReportesPage() {
             <label className="label">Hasta</label>
             <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="field" />
           </div>
+          <button type="button" onClick={usarSemanaActual} className="btn-secondary">
+            Semana actual
+          </button>
           <button type="button" onClick={usarMesActual} className="btn-secondary">
             Mes actual
           </button>
@@ -165,6 +204,36 @@ export function ReportesPage() {
             </svg>
             {descargando === 'pdf' ? 'Generando…' : 'PDF'}
           </button>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Total gastado</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {cargandoResumen ? 'Calculando…' : Q(resumenPeriodo.gasto)}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">Solo documentos recibidos.</div>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Documentos</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {cargandoResumen ? '…' : resumenPeriodo.documentos}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">Compras dentro del rango.</div>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Promedio</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {cargandoResumen ? 'Calculando…' : Q(resumenPeriodo.promedio)}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">Por documento recibido.</div>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Cobertura</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {cargandoResumen ? '…' : `${resumenPeriodo.proveedores}/${resumenPeriodo.hoteles}`}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">Proveedores / hoteles con compras.</div>
+          </div>
         </div>
         <p className="mt-3 text-xs text-slate-400">
           El Excel incluye documentos, detalle por producto, resumen, liquidación de proveedores y facturas por proveedor.

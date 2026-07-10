@@ -11,8 +11,11 @@ public class DocumentosController(IDocumentoCompraService service) : ControllerB
 {
     [HttpGet]
     public async Task<ActionResult<List<DocumentoCompraResumenDto>>> Listar(
-        [FromQuery] int? hotelId, [FromQuery] DateOnly? desde, [FromQuery] DateOnly? hasta) =>
-        await service.ListarAsync(new FiltroDocumentos(hotelId, desde, hasta));
+        [FromQuery] int? hotelId,
+        [FromQuery] int? proveedorId,
+        [FromQuery] DateOnly? desde,
+        [FromQuery] DateOnly? hasta) =>
+        await service.ListarAsync(new FiltroDocumentos(hotelId, proveedorId, desde, hasta));
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<DocumentoCompraDto>> Obtener(int id)

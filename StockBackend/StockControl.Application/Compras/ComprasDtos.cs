@@ -12,7 +12,8 @@ public record DocumentoCompraDto(
 
 public record DocumentoCompraResumenDto(
     int Id, DateOnly Fecha, string NumeroDocumento,
-    string HotelNombre, string ProveedorNombre, string Estado, decimal Total);
+    int HotelId, string HotelNombre, int ProveedorId, string ProveedorNombre,
+    string Estado, decimal Total);
 
 public record CrearDetalleCompraRequest(int ProductoId, int UnidadId, decimal Cantidad, decimal PrecioUnitario);
 

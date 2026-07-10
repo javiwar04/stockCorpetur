@@ -29,13 +29,15 @@ public class DocumentoCompraService(
         query = AplicarScopingHotel(query);
 
         if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
+        if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
         if (filtro.Desde is not null) query = query.Where(d => d.Fecha >= filtro.Desde);
         if (filtro.Hasta is not null) query = query.Where(d => d.Fecha <= filtro.Hasta);
 
         var documentos = await query.OrderByDescending(d => d.Fecha).ToListAsync(ct);
 
         return documentos.Select(d => new DocumentoCompraResumenDto(
-            d.Id, d.Fecha, d.NumeroDocumento, d.Hotel.Nombre, d.Proveedor.Nombre, d.Estado.ToString(), d.Total)).ToList();
+            d.Id, d.Fecha, d.NumeroDocumento, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
+            d.Estado.ToString(), d.Total)).ToList();
     }
 
     public async Task<DocumentoCompraDto?> ObtenerAsync(int id, CancellationToken ct = default)

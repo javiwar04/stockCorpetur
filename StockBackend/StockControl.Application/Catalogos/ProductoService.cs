@@ -49,10 +49,36 @@ public class ProductoService(IApplicationDbContext db) : IProductoService
         var producto = await db.Productos.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (producto is null) return null;
 
+        var unidadBaseAnteriorId = producto.UnidadBaseId;
+
         producto.Nombre = req.Nombre.Trim();
         producto.Categoria = ParsearCategoria(req.Categoria);
         producto.UnidadBaseId = req.UnidadBaseId;
         producto.Activo = req.Activo;
+
+        var conversionBase = await db.Conversiones
+            .FirstOrDefaultAsync(c => c.ProductoId == id && c.UnidadId == req.UnidadBaseId, ct);
+
+        if (unidadBaseAnteriorId != req.UnidadBaseId && conversionBase is { FactorABase: > 0 } conversionNuevaBase)
+        {
+            var factorNuevaBase = conversionNuevaBase.FactorABase;
+            var conversiones = await db.Conversiones.Where(c => c.ProductoId == id).ToListAsync(ct);
+            foreach (var conversion in conversiones)
+                conversion.FactorABase = conversion.UnidadId == req.UnidadBaseId ? 1m : conversion.FactorABase / factorNuevaBase;
+        }
+        else if (conversionBase is null)
+        {
+            db.Conversiones.Add(new ConversionProducto
+            {
+                ProductoId = id,
+                UnidadId = req.UnidadBaseId,
+                FactorABase = 1m,
+            });
+        }
+        else
+        {
+            conversionBase.FactorABase = 1m;
+        }
 
         await db.SaveChangesAsync(ct);
         return await ObtenerAsync(id, ct);

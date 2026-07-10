@@ -633,7 +633,7 @@ export function DocumentosPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setLineas((prev) => [...prev, lineaVacia()])}
+                    onClick={() => setLineas((prev) => [lineaVacia(), ...prev])}
                     className="btn-secondary btn-sm"
                   >
                     + Agregar línea

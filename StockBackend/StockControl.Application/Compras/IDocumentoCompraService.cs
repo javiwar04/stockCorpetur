@@ -1,6 +1,6 @@
 namespace StockControl.Application.Compras;
 
-public record FiltroDocumentos(int? HotelId, DateOnly? Desde, DateOnly? Hasta);
+public record FiltroDocumentos(int? HotelId, int? ProveedorId, DateOnly? Desde, DateOnly? Hasta);
 
 public interface IDocumentoCompraService
 {

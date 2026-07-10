@@ -98,7 +98,7 @@ public class DocumentoCompraServiceTests
         TestDb.AgregarCompra(db, 2, "H2-001", new DateOnly(2026, 7, 1), 5, 6);
 
         var service = new DocumentoCompraService(db, new CurrentUserFake(hoteles: 2));
-        var docs = await service.ListarAsync(new FiltroDocumentos(null, null, null));
+        var docs = await service.ListarAsync(new FiltroDocumentos(null, null, null, null));
 
         Assert.Single(docs);
         Assert.Equal("H2-001", docs[0].NumeroDocumento);
