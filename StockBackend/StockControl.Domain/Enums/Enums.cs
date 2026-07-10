@@ -31,6 +31,13 @@ public enum EstadoDocumentoCompra
     Anulado = 3
 }
 
+/// <summary>Clasificacion gerencial de una compra segun su planificacion.</summary>
+public enum TipoCompra
+{
+    Ordinaria = 1,
+    Extraordinaria = 2
+}
+
 /// <summary>Estado operativo de un conteo fisico de inventario.</summary>
 public enum EstadoConteoInventario
 {

@@ -10,7 +10,7 @@ import {
   obtenerDocumento,
   recibirDocumento,
 } from '../features/compras/comprasApi';
-import type { CrearDocumentoCompraRequest, EstadoDocumentoCompra, LineaNueva } from '../features/compras/types';
+import type { CrearDocumentoCompraRequest, EstadoDocumentoCompra, LineaNueva, TipoCompra } from '../features/compras/types';
 import { listarConversiones, listarHoteles, listarProductos, listarProveedores } from '../features/catalogos/catalogosApi';
 import type { Conversion } from '../features/catalogos/types';
 import { useAuth } from '../features/auth/authStore';
@@ -54,6 +54,10 @@ function badgeEstadoDocumento(estado: EstadoDocumentoCompra) {
   return 'badge-slate';
 }
 
+function badgeTipoCompra(tipo: TipoCompra) {
+  return tipo === 'Extraordinaria' ? 'badge-amber' : 'badge-sky';
+}
+
 type EstadoNavegacionDocumentos = {
   sugerenciaCompra?: {
     hotelId: number;
@@ -80,16 +84,18 @@ export function DocumentosPage() {
 
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroHotelId, setFiltroHotelId] = useState<number | ''>('');
+  const [filtroTipoCompra, setFiltroTipoCompra] = useState<TipoCompra | ''>('');
   const [filtroDesde, setFiltroDesde] = useState('');
   const [filtroHasta, setFiltroHasta] = useState('');
 
   const filtrosServidor = useMemo(
     () => ({
       hotelId: filtroHotelId === '' ? undefined : filtroHotelId,
+      tipoCompra: filtroTipoCompra || undefined,
       desde: filtroDesde || undefined,
       hasta: filtroHasta || undefined,
     }),
-    [filtroHotelId, filtroDesde, filtroHasta],
+    [filtroHotelId, filtroTipoCompra, filtroDesde, filtroHasta],
   );
 
   const eliminarMutation = useMutation({
@@ -135,7 +141,9 @@ export function DocumentosPage() {
     const texto = filtroTexto.trim().toLowerCase();
     if (!texto) return documentos ?? [];
     return (documentos ?? []).filter((d) =>
-      [d.numeroDocumento, d.hotelNombre, d.proveedorNombre].some((v) => v.toLowerCase().includes(texto)),
+      [d.numeroDocumento, d.hotelNombre, d.proveedorNombre, d.tipoCompra ?? 'Ordinaria'].some((v) =>
+        v.toLowerCase().includes(texto),
+      ),
     );
   }, [documentos, filtroTexto]);
 
@@ -155,6 +163,7 @@ export function DocumentosPage() {
   const [hotelId, setHotelId] = useState<number | ''>('');
   const [proveedorId, setProveedorId] = useState<number | ''>('');
   const [estado, setEstado] = useState<EstadoDocumentoCompra>('Recibido');
+  const [tipoCompra, setTipoCompra] = useState<TipoCompra>('Ordinaria');
   const [retencion, setRetencion] = useState('0');
   const [observaciones, setObservaciones] = useState('');
   const [lineas, setLineas] = useState<LineaNueva[]>([lineaVacia()]);
@@ -170,6 +179,7 @@ export function DocumentosPage() {
     setHotelId('');
     setProveedorId('');
     setEstado('Recibido');
+    setTipoCompra('Ordinaria');
     setObservaciones('');
     setRetencion('0');
     setLineas([lineaVacia()]);
@@ -211,6 +221,7 @@ export function DocumentosPage() {
     setHotelId(doc.hotelId);
     setProveedorId(doc.proveedorId);
     setEstado(doc.estado);
+    setTipoCompra(doc.tipoCompra ?? 'Ordinaria');
     setRetencion(String(doc.retencion));
     setObservaciones(doc.observaciones ?? '');
     setLineas(
@@ -263,6 +274,7 @@ export function DocumentosPage() {
     setHotelId(sugerencia.hotelId);
     setProveedorId(proveedorActivo);
     setEstado('Borrador');
+    setTipoCompra('Ordinaria');
     setRetencion('0');
     setObservaciones(sugerencia.observaciones ?? 'Generado desde sugerencia de compra.');
     setLineas(lineasPrecargadas);
@@ -341,6 +353,7 @@ export function DocumentosPage() {
       hotelId: Number(hotelId),
       proveedorId: Number(proveedorId),
       estado,
+      tipoCompra,
       retencion: Number(retencion) || 0,
       observaciones: observaciones || undefined,
       detalles,
@@ -350,6 +363,7 @@ export function DocumentosPage() {
   const limpiarFiltros = () => {
     setFiltroTexto('');
     setFiltroHotelId('');
+    setFiltroTipoCompra('');
     setFiltroDesde('');
     setFiltroHasta('');
   };
@@ -390,7 +404,7 @@ export function DocumentosPage() {
       </div>
 
       <div className="card card-pad">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1.5fr)_minmax(180px,1fr)_150px_150px_auto] lg:items-end">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1.5fr)_minmax(180px,1fr)_160px_150px_150px_auto] lg:items-end">
           <div>
             <label className="label">Buscar</label>
             <input
@@ -413,6 +427,18 @@ export function DocumentosPage() {
                   {h.nombre}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Tipo compra</label>
+            <select
+              value={filtroTipoCompra}
+              onChange={(e) => setFiltroTipoCompra(e.target.value as TipoCompra | '')}
+              className="field"
+            >
+              <option value="">Todas</option>
+              <option value="Ordinaria">Ordinaria</option>
+              <option value="Extraordinaria">Extraordinaria</option>
             </select>
           </div>
           <div>
@@ -450,6 +476,7 @@ export function DocumentosPage() {
                 <th className="th">Documento</th>
                 <th className="th">Hotel</th>
                 <th className="th">Proveedor</th>
+                <th className="th">Tipo</th>
                 <th className="th">Estado</th>
                 <th className="th text-right">Total</th>
                 <th className="th text-right">Acciones</th>
@@ -458,7 +485,7 @@ export function DocumentosPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={7} className="empty-cell">Cargando documentos…</td>
+                  <td colSpan={8} className="empty-cell">Cargando documentos…</td>
                 </tr>
               )}
               {!isLoading &&
@@ -470,6 +497,9 @@ export function DocumentosPage() {
                     </td>
                     <td className="td text-slate-600">{d.hotelNombre}</td>
                     <td className="td text-slate-600">{d.proveedorNombre}</td>
+                    <td className="td">
+                      <span className={badgeTipoCompra(d.tipoCompra ?? 'Ordinaria')}>{d.tipoCompra ?? 'Ordinaria'}</span>
+                    </td>
                     <td className="td">
                       <span className={badgeEstadoDocumento(d.estado)}>{d.estado}</span>
                     </td>
@@ -520,7 +550,7 @@ export function DocumentosPage() {
                 ))}
               {!isLoading && documentosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="empty-cell">
+                  <td colSpan={8} className="empty-cell">
                     No hay documentos con estos filtros. Ajusta la búsqueda o registra una compra nueva.
                   </td>
                 </tr>
@@ -570,7 +600,7 @@ export function DocumentosPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
                 <div>
                   <label className="label">Fecha *</label>
                   <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="field" />
@@ -621,6 +651,17 @@ export function DocumentosPage() {
                   >
                     <option value="Borrador">Borrador</option>
                     <option value="Recibido">Recibido</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Tipo de compra *</label>
+                  <select
+                    value={tipoCompra}
+                    onChange={(e) => setTipoCompra(e.target.value as TipoCompra)}
+                    className="field"
+                  >
+                    <option value="Ordinaria">Ordinaria</option>
+                    <option value="Extraordinaria">Extraordinaria</option>
                   </select>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 export type EstadoDocumentoCompra = 'Borrador' | 'Recibido' | 'Anulado';
+export type TipoCompra = 'Ordinaria' | 'Extraordinaria';
 
 export interface DetalleCompra {
   id: number;
@@ -20,6 +21,7 @@ export interface DocumentoCompra {
   proveedorId: number;
   proveedorNombre: string;
   estado: EstadoDocumentoCompra;
+  tipoCompra: TipoCompra;
   retencion: number;
   observaciones: string | null;
   total: number;
@@ -35,6 +37,7 @@ export interface DocumentoCompraResumen {
   proveedorId: number;
   proveedorNombre: string;
   estado: EstadoDocumentoCompra;
+  tipoCompra: TipoCompra;
   total: number;
 }
 
@@ -51,6 +54,7 @@ export interface CrearDocumentoCompraRequest {
   hotelId: number;
   proveedorId: number;
   estado?: EstadoDocumentoCompra;
+  tipoCompra?: TipoCompra;
   retencion: number;
   observaciones?: string;
   detalles: { productoId: number; unidadId: number; cantidad: number; precioUnitario: number }[];

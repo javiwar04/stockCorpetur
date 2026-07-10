@@ -22,9 +22,9 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         var hojaDocs = libro.Worksheets.Add("Documentos");
         hojaDocs.Cell(1, 1).Value = titulo;
         hojaDocs.Cell(1, 1).Style.Font.SetBold().Font.FontSize = 14;
-        hojaDocs.Range(1, 1, 1, 5).Merge();
+        hojaDocs.Range(1, 1, 1, 6).Merge();
 
-        string[] encabezadosDoc = ["Fecha", "No. Documento", "Hotel", "Proveedor", "Total (Q)"];
+        string[] encabezadosDoc = ["Fecha", "No. Documento", "Hotel", "Proveedor", "Tipo compra", "Total (Q)"];
         for (var i = 0; i < encabezadosDoc.Length; i++)
         {
             var celda = hojaDocs.Cell(3, i + 1);
@@ -40,19 +40,20 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaDocs.Cell(fila, 2).Value = d.NumeroDocumento;
             hojaDocs.Cell(fila, 3).Value = d.Hotel.Nombre;
             hojaDocs.Cell(fila, 4).Value = d.Proveedor.Nombre;
-            hojaDocs.Cell(fila, 5).FormulaA1 = $"=SUMIFS(Detalle!H:H,Detalle!B:B,B{fila},Detalle!C:C,C{fila})";
-            hojaDocs.Cell(fila, 5).Style.NumberFormat.Format = "#,##0.00";
+            hojaDocs.Cell(fila, 5).Value = d.TipoCompra.ToString();
+            hojaDocs.Cell(fila, 6).FormulaA1 = $"=SUMIFS(Detalle!I:I,Detalle!B:B,B{fila},Detalle!C:C,C{fila})";
+            hojaDocs.Cell(fila, 6).Style.NumberFormat.Format = "#,##0.00";
             fila++;
         }
         var filaTotal = fila + 1;
-        hojaDocs.Cell(filaTotal, 4).Value = "GRAN TOTAL";
-        hojaDocs.Cell(filaTotal, 4).Style.Font.SetBold();
-        hojaDocs.Cell(filaTotal, 5).FormulaA1 = $"=SUM(E4:E{fila - 1})";
-        hojaDocs.Cell(filaTotal, 5).Style.Font.SetBold().NumberFormat.Format = "#,##0.00";
+        hojaDocs.Cell(filaTotal, 5).Value = "GRAN TOTAL";
+        hojaDocs.Cell(filaTotal, 5).Style.Font.SetBold();
+        hojaDocs.Cell(filaTotal, 6).FormulaA1 = $"=SUM(F4:F{fila - 1})";
+        hojaDocs.Cell(filaTotal, 6).Style.Font.SetBold().NumberFormat.Format = "#,##0.00";
 
         // --- Hoja 2: Detalle ---
         var hojaDet = libro.Worksheets.Add("Detalle");
-        string[] encabezadosDet = ["Fecha", "No. Documento", "Hotel", "Producto", "Categoría", "Cantidad", "Precio unit. (Q)", "Total (Q)"];
+        string[] encabezadosDet = ["Fecha", "No. Documento", "Hotel", "Tipo compra", "Producto", "Categoría", "Cantidad", "Precio unit. (Q)", "Total (Q)"];
         for (var i = 0; i < encabezadosDet.Length; i++)
         {
             var celda = hojaDet.Cell(1, i + 1);
@@ -69,13 +70,14 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 hojaDet.Cell(fila, 1).Style.DateFormat.Format = "dd/mm/yyyy";
                 hojaDet.Cell(fila, 2).Value = d.NumeroDocumento;
                 hojaDet.Cell(fila, 3).Value = d.Hotel.Nombre;
-                hojaDet.Cell(fila, 4).Value = linea.Producto.Nombre;
-                hojaDet.Cell(fila, 5).Value = linea.Producto.Categoria.ToString();
-                hojaDet.Cell(fila, 6).Value = linea.Cantidad;
-                hojaDet.Cell(fila, 7).Value = linea.PrecioUnitario;
-                hojaDet.Cell(fila, 7).Style.NumberFormat.Format = "#,##0.00";
-                hojaDet.Cell(fila, 8).FormulaA1 = $"=F{fila}*G{fila}";
+                hojaDet.Cell(fila, 4).Value = d.TipoCompra.ToString();
+                hojaDet.Cell(fila, 5).Value = linea.Producto.Nombre;
+                hojaDet.Cell(fila, 6).Value = linea.Producto.Categoria.ToString();
+                hojaDet.Cell(fila, 7).Value = linea.Cantidad;
+                hojaDet.Cell(fila, 8).Value = linea.PrecioUnitario;
                 hojaDet.Cell(fila, 8).Style.NumberFormat.Format = "#,##0.00";
+                hojaDet.Cell(fila, 9).FormulaA1 = $"=G{fila}*H{fila}";
+                hojaDet.Cell(fila, 9).Style.NumberFormat.Format = "#,##0.00";
                 fila++;
             }
         }
@@ -115,7 +117,50 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             fila++;
         }
 
-        // --- Hoja 4: Liquidacion por proveedor ---
+        // --- Hoja 4: Resumen por tipo de compra ---
+        var resumenTipo = documentos
+            .GroupBy(d => d.TipoCompra)
+            .Select(g => new
+            {
+                Tipo = g.Key.ToString(),
+                Documentos = g.Count(),
+                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario)),
+                Retencion = g.Sum(d => d.Retencion),
+            })
+            .Select(x => new
+            {
+                x.Tipo,
+                x.Documentos,
+                x.Bruto,
+                x.Retencion,
+                Neto = x.Bruto - x.Retencion,
+                Promedio = x.Documentos == 0 ? 0 : x.Bruto / x.Documentos,
+            })
+            .OrderBy(x => x.Tipo)
+            .ToList();
+
+        var hojaTipo = libro.Worksheets.Add("Resumen tipo compra");
+        string[] encabezadosTipo = ["Tipo compra", "Documentos", "Bruto (Q)", "Retencion (Q)", "Neto (Q)", "Promedio doc. (Q)"];
+        for (var i = 0; i < encabezadosTipo.Length; i++)
+        {
+            var celda = hojaTipo.Cell(1, i + 1);
+            celda.Value = encabezadosTipo[i];
+            celda.Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromHtml("#0f172a")).Font.SetFontColor(XLColor.White);
+        }
+        fila = 2;
+        foreach (var t in resumenTipo)
+        {
+            hojaTipo.Cell(fila, 1).Value = t.Tipo;
+            hojaTipo.Cell(fila, 2).Value = t.Documentos;
+            hojaTipo.Cell(fila, 3).Value = t.Bruto;
+            hojaTipo.Cell(fila, 4).Value = t.Retencion;
+            hojaTipo.Cell(fila, 5).Value = t.Neto;
+            hojaTipo.Cell(fila, 6).Value = t.Promedio;
+            hojaTipo.Range(fila, 3, fila, 6).Style.NumberFormat.Format = "#,##0.00";
+            fila++;
+        }
+
+        // --- Hoja 5: Liquidacion por proveedor ---
         var liquidacion = documentos
             .GroupBy(d => new { d.ProveedorId, d.Proveedor.Nombre, d.Proveedor.Nit })
             .Select(g => new
@@ -175,9 +220,9 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         hojaLiq.Cell(fila + 1, 8).Value = liquidacion.Sum(l => l.Neto);
         hojaLiq.Cell(fila + 1, 8).Style.Font.SetBold().NumberFormat.Format = "#,##0.00";
 
-        // --- Hoja 5: Facturas por proveedor ---
+        // --- Hoja 6: Facturas por proveedor ---
         var hojaProv = libro.Worksheets.Add("Facturas proveedor");
-        string[] encabezadosProv = ["Fecha", "Proveedor", "NIT", "No. Documento", "Hotel", "Bruto (Q)", "Retencion (Q)", "Neto a pagar (Q)", "Observaciones"];
+        string[] encabezadosProv = ["Fecha", "Proveedor", "NIT", "No. Documento", "Hotel", "Tipo compra", "Bruto (Q)", "Retencion (Q)", "Neto a pagar (Q)", "Observaciones"];
         for (var i = 0; i < encabezadosProv.Length; i++)
         {
             var celda = hojaProv.Cell(1, i + 1);
@@ -195,11 +240,12 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaProv.Cell(fila, 3).Value = d.Proveedor.Nit ?? "";
             hojaProv.Cell(fila, 4).Value = d.NumeroDocumento;
             hojaProv.Cell(fila, 5).Value = d.Hotel.Nombre;
-            hojaProv.Cell(fila, 6).Value = bruto;
-            hojaProv.Cell(fila, 7).Value = d.Retencion;
-            hojaProv.Cell(fila, 8).Value = bruto - d.Retencion;
-            hojaProv.Cell(fila, 9).Value = d.Observaciones ?? "";
-            hojaProv.Range(fila, 6, fila, 8).Style.NumberFormat.Format = "#,##0.00";
+            hojaProv.Cell(fila, 6).Value = d.TipoCompra.ToString();
+            hojaProv.Cell(fila, 7).Value = bruto;
+            hojaProv.Cell(fila, 8).Value = d.Retencion;
+            hojaProv.Cell(fila, 9).Value = bruto - d.Retencion;
+            hojaProv.Cell(fila, 10).Value = d.Observaciones ?? "";
+            hojaProv.Range(fila, 7, fila, 9).Style.NumberFormat.Format = "#,##0.00";
             fila++;
         }
 
@@ -220,6 +266,16 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             .GroupBy(l => l.Producto.Categoria)
             .Select(g => new { Categoria = g.Key.ToString(), Gasto = g.Sum(l => l.Cantidad * l.PrecioUnitario) })
             .OrderByDescending(x => x.Gasto)
+            .ToList();
+        var porTipo = documentos
+            .GroupBy(d => d.TipoCompra)
+            .Select(g => new
+            {
+                Tipo = g.Key.ToString(),
+                Documentos = g.Count(),
+                Gasto = g.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario)),
+            })
+            .OrderBy(x => x.Tipo)
             .ToList();
         var liquidacion = documentos
             .GroupBy(d => new { d.ProveedorId, d.Proveedor.Nombre, d.Proveedor.Nit })
@@ -328,6 +384,29 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         }
                     });
 
+                    // Por tipo de compra
+                    col.Item().Text("Gasto por tipo de compra").FontSize(11).Bold();
+                    col.Item().Table(tabla =>
+                    {
+                        tabla.ColumnsDefinition(c =>
+                        {
+                            c.RelativeColumn(2);
+                            c.ConstantColumn(55);
+                            c.ConstantColumn(80);
+                        });
+                        tabla.Header(h =>
+                        {
+                            foreach (var texto in new[] { "Tipo", "Docs", "Gasto" })
+                                h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(texto).Bold();
+                        });
+                        foreach (var tipo in porTipo)
+                        {
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(tipo.Tipo);
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(tipo.Documentos.ToString());
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{tipo.Gasto:N2}");
+                        }
+                    });
+
                     // Documentos
                     col.Item().Text("Documentos").FontSize(11).Bold();
                     col.Item().Table(tabla =>
@@ -338,12 +417,13 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                             c.RelativeColumn(2);
                             c.RelativeColumn(2);
                             c.RelativeColumn(2);
+                            c.RelativeColumn(1);
                             c.ConstantColumn(70);
                         });
 
                         tabla.Header(h =>
                         {
-                            foreach (var texto in new[] { "Fecha", "No. Documento", "Hotel", "Proveedor", "Total" })
+                            foreach (var texto in new[] { "Fecha", "No. Documento", "Hotel", "Proveedor", "Tipo", "Total" })
                                 h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(texto).Bold();
                         });
 
@@ -354,6 +434,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.NumeroDocumento);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Hotel.Nombre);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Proveedor.Nombre);
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.TipoCompra.ToString());
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{total:N2}");
                         }
                     });
@@ -1052,6 +1133,11 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
 
         if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
         if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
+        if (!string.IsNullOrWhiteSpace(filtro.TipoCompra))
+        {
+            var tipoCompra = ParsearTipoCompra(filtro.TipoCompra);
+            query = query.Where(d => d.TipoCompra == tipoCompra);
+        }
         if (filtro.Desde is not null) query = query.Where(d => d.Fecha >= filtro.Desde);
         if (filtro.Hasta is not null) query = query.Where(d => d.Fecha <= filtro.Hasta);
 
@@ -1070,11 +1156,18 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             partes.Add($"Proveedor: {documentos[0].Proveedor.Nombre}");
         else if (filtro.ProveedorId is null)
             partes.Add("Todos los proveedores");
+        if (!string.IsNullOrWhiteSpace(filtro.TipoCompra))
+            partes.Add($"Tipo: {ParsearTipoCompra(filtro.TipoCompra)}");
         if (filtro.Desde is not null) partes.Add($"desde {filtro.Desde:dd/MM/yyyy}");
         if (filtro.Hasta is not null) partes.Add($"hasta {filtro.Hasta:dd/MM/yyyy}");
 
         return (documentos, string.Join(" · ", partes));
     }
+
+    private static TipoCompra ParsearTipoCompra(string valor) =>
+        Enum.TryParse<TipoCompra>(valor, ignoreCase: true, out var tipo)
+            ? tipo
+            : throw new InvalidOperationException($"Tipo de compra invalido: {valor}");
 
     private async Task<KardexReporte> CargarKardexAsync(FiltroReporteKardex filtro, CancellationToken ct)
     {

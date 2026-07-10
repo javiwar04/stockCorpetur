@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StockControl.Domain.Entities;
+using StockControl.Domain.Enums;
 
 namespace StockControl.Infrastructure.Persistence.Configurations;
 
@@ -10,6 +11,7 @@ public class DocumentoCompraConfig : IEntityTypeConfiguration<DocumentoCompra>
     {
         b.Property(x => x.NumeroDocumento).HasMaxLength(60).IsRequired();
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.TipoCompra).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(TipoCompra.Ordinaria);
         b.Property(x => x.Retencion).HasPrecision(18, 2);
         b.Property(x => x.Observaciones).HasMaxLength(500);
 

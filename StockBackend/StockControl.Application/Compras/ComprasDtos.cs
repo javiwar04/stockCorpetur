@@ -7,13 +7,13 @@ public record DetalleCompraDto(
 public record DocumentoCompraDto(
     int Id, DateOnly Fecha, string NumeroDocumento,
     int HotelId, string HotelNombre, int ProveedorId, string ProveedorNombre,
-    string Estado, decimal Retencion, string? Observaciones, decimal Total,
+    string Estado, string TipoCompra, decimal Retencion, string? Observaciones, decimal Total,
     List<DetalleCompraDto> Detalles);
 
 public record DocumentoCompraResumenDto(
     int Id, DateOnly Fecha, string NumeroDocumento,
     int HotelId, string HotelNombre, int ProveedorId, string ProveedorNombre,
-    string Estado, decimal Total);
+    string Estado, string TipoCompra, decimal Total);
 
 public record CrearDetalleCompraRequest(int ProductoId, int UnidadId, decimal Cantidad, decimal PrecioUnitario);
 
@@ -25,4 +25,5 @@ public record CrearDocumentoCompraRequest(
     decimal Retencion,
     string? Observaciones,
     List<CrearDetalleCompraRequest> Detalles,
-    string? Estado = null);
+    string? Estado = null,
+    string? TipoCompra = null);

@@ -30,6 +30,11 @@ public class DocumentoCompraService(
 
         if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
         if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
+        if (!string.IsNullOrWhiteSpace(filtro.TipoCompra))
+        {
+            var tipoCompra = ParsearTipoCompra(filtro.TipoCompra);
+            query = query.Where(d => d.TipoCompra == tipoCompra);
+        }
         if (filtro.Desde is not null) query = query.Where(d => d.Fecha >= filtro.Desde);
         if (filtro.Hasta is not null) query = query.Where(d => d.Fecha <= filtro.Hasta);
 
@@ -37,7 +42,7 @@ public class DocumentoCompraService(
 
         return documentos.Select(d => new DocumentoCompraResumenDto(
             d.Id, d.Fecha, d.NumeroDocumento, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
-            d.Estado.ToString(), d.Total)).ToList();
+            d.Estado.ToString(), d.TipoCompra.ToString(), d.Total)).ToList();
     }
 
     public async Task<DocumentoCompraDto?> ObtenerAsync(int id, CancellationToken ct = default)
@@ -80,6 +85,7 @@ public class DocumentoCompraService(
             HotelId = req.HotelId,
             ProveedorId = req.ProveedorId,
             Estado = estado,
+            TipoCompra = ParsearTipoCompra(req.TipoCompra),
             Retencion = req.Retencion,
             Observaciones = req.Observaciones,
         };
@@ -111,7 +117,7 @@ public class DocumentoCompraService(
             documento.Id,
             documento.HotelId,
             $"Documento {documento.NumeroDocumento} creado",
-            $"Estado {documento.Estado}; total Q{documento.Total:N2}",
+            $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N2}",
             ct);
 
         return (await ObtenerAsync(documento.Id, ct))!;
@@ -149,6 +155,7 @@ public class DocumentoCompraService(
         documento.HotelId = req.HotelId;
         documento.ProveedorId = req.ProveedorId;
         documento.Estado = estado;
+        documento.TipoCompra = ParsearTipoCompra(req.TipoCompra, documento.TipoCompra);
         documento.Retencion = req.Retencion;
         documento.Observaciones = req.Observaciones;
 
@@ -180,7 +187,7 @@ public class DocumentoCompraService(
             documento.Id,
             documento.HotelId,
             $"Documento {documento.NumeroDocumento} actualizado",
-            $"Estado {documento.Estado}; total Q{documento.Total:N2}",
+            $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N2}",
             ct);
         return await ObtenerAsync(id, ct);
     }
@@ -269,7 +276,7 @@ public class DocumentoCompraService(
 
     private static DocumentoCompraDto Mapear(DocumentoCompra d) => new(
         d.Id, d.Fecha, d.NumeroDocumento, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
-        d.Estado.ToString(), d.Retencion, d.Observaciones, d.Total,
+        d.Estado.ToString(), d.TipoCompra.ToString(), d.Retencion, d.Observaciones, d.Total,
         d.Detalles.Select(det => new DetalleCompraDto(
             det.Id, det.ProductoId, det.Producto.Nombre, det.UnidadId, det.Unidad.Nombre,
             det.Cantidad, det.PrecioUnitario, det.Total)).ToList());
@@ -285,6 +292,15 @@ public class DocumentoCompraService(
             throw new InvalidOperationException("Usa la accion de anulacion para anular documentos.");
 
         return estado;
+    }
+
+    private static TipoCompra ParsearTipoCompra(string? valor, TipoCompra predeterminado = TipoCompra.Ordinaria)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return predeterminado;
+
+        return Enum.TryParse<TipoCompra>(valor, ignoreCase: true, out var tipo)
+            ? tipo
+            : throw new InvalidOperationException($"Tipo de compra invalido: {valor}");
     }
 
     private async Task AuditarAsync(

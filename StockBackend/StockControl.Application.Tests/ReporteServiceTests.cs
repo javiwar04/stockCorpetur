@@ -29,7 +29,7 @@ public class ReporteServiceTests
         db.SaveChanges();
 
         var service = new ReporteService(db, new CurrentUserFake(esAdmin: true));
-        var bytes = await service.GenerarExcelAsync(new FiltroReporte(null, 1, new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31)));
+        var bytes = await service.GenerarExcelAsync(new FiltroReporte(null, 1, null, new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31)));
 
         using var libro = new XLWorkbook(new MemoryStream(bytes));
         Assert.True(libro.Worksheets.Contains("Liquidacion proveedores"));
@@ -48,7 +48,7 @@ public class ReporteServiceTests
         TestDb.AgregarCompra(db, 1, "PDF-001", new DateOnly(2026, 7, 1), 10, 5);
 
         var service = new ReporteService(db, new CurrentUserFake(esAdmin: true));
-        var bytes = await service.GenerarPdfAsync(new FiltroReporte(null, null, new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31)));
+        var bytes = await service.GenerarPdfAsync(new FiltroReporte(null, null, null, new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31)));
 
         Assert.True(bytes.Length > 0);
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));

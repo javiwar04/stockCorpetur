@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listarHoteles, listarProveedores } from '../features/catalogos/catalogosApi';
 import { listarDocumentos } from '../features/compras/comprasApi';
+import type { TipoCompra } from '../features/compras/types';
 import {
   descargarExcel,
   descargarPdf,
@@ -25,6 +26,7 @@ export function ReportesPage() {
 
   const [hotelId, setHotelId] = useState<number | ''>('');
   const [proveedorId, setProveedorId] = useState<number | ''>('');
+  const [tipoCompra, setTipoCompra] = useState<TipoCompra | ''>('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [descargando, setDescargando] = useState<'excel' | 'pdf' | null>(null);
@@ -44,10 +46,11 @@ export function ReportesPage() {
     () => ({
       hotelId: hotelId === '' ? undefined : Number(hotelId),
       proveedorId: proveedorId === '' ? undefined : Number(proveedorId),
+      tipoCompra: tipoCompra || undefined,
       desde: desde || undefined,
       hasta: hasta || undefined,
     }),
-    [hotelId, proveedorId, desde, hasta],
+    [hotelId, proveedorId, tipoCompra, desde, hasta],
   );
 
   const { data: documentosPeriodo, isLoading: cargandoResumen } = useQuery({
@@ -58,8 +61,12 @@ export function ReportesPage() {
   const resumenPeriodo = useMemo(() => {
     const recibidos = (documentosPeriodo ?? []).filter((d) => d.estado === 'Recibido');
     const gasto = recibidos.reduce((acc, d) => acc + d.total, 0);
+    const ordinaria = recibidos.filter((d) => (d.tipoCompra ?? 'Ordinaria') === 'Ordinaria').reduce((acc, d) => acc + d.total, 0);
+    const extraordinaria = recibidos.filter((d) => d.tipoCompra === 'Extraordinaria').reduce((acc, d) => acc + d.total, 0);
     return {
       gasto,
+      ordinaria,
+      extraordinaria,
       documentos: recibidos.length,
       promedio: recibidos.length ? gasto / recibidos.length : 0,
       proveedores: new Set(recibidos.map((d) => d.proveedorId)).size,
@@ -144,7 +151,7 @@ export function ReportesPage() {
       <div className="card card-pad">
         <h2 className="card-title mb-1">Reporte de compras y liquidación</h2>
         <p className="mb-4 text-xs text-slate-500">
-          Filtra por rango, hotel o proveedor. El reporte usa solo documentos recibidos e incluye neto a pagar por proveedor.
+          Filtra por rango, hotel, proveedor o tipo de compra. El reporte usa solo documentos recibidos e incluye neto a pagar por proveedor.
         </p>
         {errorDescarga && <p className="mb-3 text-sm text-rose-600">{errorDescarga}</p>}
         <div className="flex flex-wrap items-end gap-3">
@@ -179,6 +186,18 @@ export function ReportesPage() {
             </select>
           </div>
           <div>
+            <label className="label">Tipo compra</label>
+            <select
+              value={tipoCompra}
+              onChange={(e) => setTipoCompra(e.target.value as TipoCompra | '')}
+              className="field w-auto min-w-44"
+            >
+              <option value="">Todas</option>
+              <option value="Ordinaria">Ordinaria</option>
+              <option value="Extraordinaria">Extraordinaria</option>
+            </select>
+          </div>
+          <div>
             <label className="label">Desde</label>
             <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="field" />
           </div>
@@ -205,13 +224,27 @@ export function ReportesPage() {
             {descargando === 'pdf' ? 'Generando…' : 'PDF'}
           </button>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Total gastado</div>
             <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
               {cargandoResumen ? 'Calculando…' : Q(resumenPeriodo.gasto)}
             </div>
             <div className="mt-1 text-xs text-slate-500">Solo documentos recibidos.</div>
+          </div>
+          <div className="rounded-xl bg-sky-50 p-4 ring-1 ring-sky-200/70">
+            <div className="text-xs font-medium uppercase tracking-wide text-sky-500">Ordinaria</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {cargandoResumen ? 'Calculando…' : Q(resumenPeriodo.ordinaria)}
+            </div>
+            <div className="mt-1 text-xs text-sky-700">Compra planificada.</div>
+          </div>
+          <div className="rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200/70">
+            <div className="text-xs font-medium uppercase tracking-wide text-amber-600">Extraordinaria</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {cargandoResumen ? 'Calculando…' : Q(resumenPeriodo.extraordinaria)}
+            </div>
+            <div className="mt-1 text-xs text-amber-700">Fuera del flujo normal.</div>
           </div>
           <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Documentos</div>

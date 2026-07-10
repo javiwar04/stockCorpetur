@@ -14,10 +14,11 @@ public class ReportesController(IReporteService service) : ControllerBase
     public async Task<IActionResult> Excel(
         [FromQuery] int? hotelId,
         [FromQuery] int? proveedorId,
+        [FromQuery] string? tipoCompra,
         [FromQuery] DateOnly? desde,
         [FromQuery] DateOnly? hasta)
     {
-        var bytes = await service.GenerarExcelAsync(new FiltroReporte(hotelId, proveedorId, desde, hasta));
+        var bytes = await service.GenerarExcelAsync(new FiltroReporte(hotelId, proveedorId, tipoCompra, desde, hasta));
         return File(bytes,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             $"reporte-compras-{DateTime.Now:yyyyMMdd}.xlsx");
@@ -27,10 +28,11 @@ public class ReportesController(IReporteService service) : ControllerBase
     public async Task<IActionResult> Pdf(
         [FromQuery] int? hotelId,
         [FromQuery] int? proveedorId,
+        [FromQuery] string? tipoCompra,
         [FromQuery] DateOnly? desde,
         [FromQuery] DateOnly? hasta)
     {
-        var bytes = await service.GenerarPdfAsync(new FiltroReporte(hotelId, proveedorId, desde, hasta));
+        var bytes = await service.GenerarPdfAsync(new FiltroReporte(hotelId, proveedorId, tipoCompra, desde, hasta));
         return File(bytes, "application/pdf", $"reporte-compras-{DateTime.Now:yyyyMMdd}.pdf");
     }
 

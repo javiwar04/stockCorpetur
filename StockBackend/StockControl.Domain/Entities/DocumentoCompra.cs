@@ -26,6 +26,7 @@ public class DocumentoCompra : EntidadBase
     public decimal Retencion { get; set; }
 
     public EstadoDocumentoCompra Estado { get; set; } = EstadoDocumentoCompra.Recibido;
+    public TipoCompra TipoCompra { get; set; } = TipoCompra.Ordinaria;
 
     public string? Observaciones { get; set; }
 

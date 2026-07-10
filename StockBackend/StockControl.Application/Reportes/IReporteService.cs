@@ -1,6 +1,6 @@
 namespace StockControl.Application.Reportes;
 
-public record FiltroReporte(int? HotelId, int? ProveedorId, DateOnly? Desde, DateOnly? Hasta);
+public record FiltroReporte(int? HotelId, int? ProveedorId, string? TipoCompra, DateOnly? Desde, DateOnly? Hasta);
 public record FiltroReporteKardex(int HotelId, int ProductoId, DateOnly? Desde, DateOnly? Hasta);
 public record FiltroReporteCuentasPorPagar(
     int? HotelId,

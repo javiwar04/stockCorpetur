@@ -3,6 +3,7 @@ import { api } from '../../lib/api';
 export interface FiltroReporte {
   hotelId?: number;
   proveedorId?: number;
+  tipoCompra?: string;
   desde?: string;
   hasta?: string;
 }
