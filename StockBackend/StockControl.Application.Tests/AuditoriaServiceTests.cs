@@ -50,6 +50,7 @@ public class AuditoriaServiceTests
         await service.CrearAsync(new CrearDocumentoCompraRequest(
             new DateOnly(2026, 7, 8),
             "AUD-001",
+            "PED-AUD-001",
             1,
             1,
             0,

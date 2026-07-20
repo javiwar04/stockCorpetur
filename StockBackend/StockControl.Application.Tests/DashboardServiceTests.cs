@@ -90,7 +90,7 @@ public class DashboardServiceTests
         // 2 cajas (factor 25) = 50 lb + 30 lb sueltas = 80 lb.
         var doc = new DocumentoCompra
         {
-            Fecha = hoy, NumeroDocumento = "MIX-01", HotelId = 1, ProveedorId = 1,
+            Fecha = hoy, NumeroDocumento = "MIX-01", NumeroPedido = "MIX-01", HotelId = 1, ProveedorId = 1,
             Detalles =
             {
                 new DetalleCompra { ProductoId = 1, UnidadId = 2, Cantidad = 2, PrecioUnitario = 150, FactorABase = 25 },

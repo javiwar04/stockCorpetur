@@ -41,7 +41,7 @@ public class DocumentoCompraService(
         var documentos = await query.OrderByDescending(d => d.Fecha).ToListAsync(ct);
 
         return documentos.Select(d => new DocumentoCompraResumenDto(
-            d.Id, d.Fecha, d.NumeroDocumento, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
+            d.Id, d.Fecha, d.NumeroDocumento, d.NumeroPedido, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
             d.Estado.ToString(), d.TipoCompra.ToString(), d.Total)).ToList();
     }
 
@@ -69,19 +69,23 @@ public class DocumentoCompraService(
         if (req.Detalles.Count == 0)
             throw new InvalidOperationException("El documento debe tener al menos un producto.");
 
+        var numeroDocumento = ValidarTextoObligatorio(req.NumeroDocumento, "numero de documento");
+        var numeroPedido = ValidarTextoObligatorio(req.NumeroPedido, "numero de pedido");
+
         await _cierreGuard.AsegurarPeriodoAbiertoAsync(req.HotelId, req.Fecha, "registrar documentos", ct);
 
         var estado = ParsearEstadoParaGuardar(req.Estado, EstadoDocumentoCompra.Recibido);
 
         var numeroRepetido = await db.Documentos.AnyAsync(
-            x => x.HotelId == req.HotelId && x.NumeroDocumento == req.NumeroDocumento, ct);
+            x => x.HotelId == req.HotelId && x.NumeroDocumento == numeroDocumento, ct);
         if (numeroRepetido)
             throw new InvalidOperationException("Ya existe un documento con ese número para este hotel.");
 
         var documento = new DocumentoCompra
         {
             Fecha = req.Fecha,
-            NumeroDocumento = req.NumeroDocumento.Trim(),
+            NumeroDocumento = numeroDocumento,
+            NumeroPedido = numeroPedido,
             HotelId = req.HotelId,
             ProveedorId = req.ProveedorId,
             Estado = estado,
@@ -138,6 +142,9 @@ public class DocumentoCompraService(
         if (documento.Estado == EstadoDocumentoCompra.Anulado)
             throw new InvalidOperationException("No se puede editar un documento anulado.");
 
+        var numeroDocumento = ValidarTextoObligatorio(req.NumeroDocumento, "numero de documento");
+        var numeroPedido = ValidarTextoObligatorio(req.NumeroPedido, "numero de pedido");
+
         await _cierreGuard.AsegurarPeriodoAbiertoAsync(documento.HotelId, documento.Fecha, "editar documentos", ct);
         await _cierreGuard.AsegurarPeriodoAbiertoAsync(req.HotelId, req.Fecha, "editar documentos", ct);
 
@@ -146,12 +153,13 @@ public class DocumentoCompraService(
             : ParsearEstadoParaGuardar(req.Estado, documento.Estado);
 
         var numeroRepetido = await db.Documentos.AnyAsync(
-            x => x.Id != id && x.HotelId == req.HotelId && x.NumeroDocumento == req.NumeroDocumento, ct);
+            x => x.Id != id && x.HotelId == req.HotelId && x.NumeroDocumento == numeroDocumento, ct);
         if (numeroRepetido)
             throw new InvalidOperationException("Ya existe otro documento con ese número para este hotel.");
 
         documento.Fecha = req.Fecha;
-        documento.NumeroDocumento = req.NumeroDocumento.Trim();
+        documento.NumeroDocumento = numeroDocumento;
+        documento.NumeroPedido = numeroPedido;
         documento.HotelId = req.HotelId;
         documento.ProveedorId = req.ProveedorId;
         documento.Estado = estado;
@@ -275,11 +283,19 @@ public class DocumentoCompraService(
     }
 
     private static DocumentoCompraDto Mapear(DocumentoCompra d) => new(
-        d.Id, d.Fecha, d.NumeroDocumento, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
+        d.Id, d.Fecha, d.NumeroDocumento, d.NumeroPedido, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
         d.Estado.ToString(), d.TipoCompra.ToString(), d.Retencion, d.Observaciones, d.Total,
         d.Detalles.Select(det => new DetalleCompraDto(
             det.Id, det.ProductoId, det.Producto.Nombre, det.UnidadId, det.Unidad.Nombre,
             det.Cantidad, det.PrecioUnitario, det.Total)).ToList());
+
+    private static string ValidarTextoObligatorio(string? valor, string campo)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+            throw new InvalidOperationException($"El {campo} es obligatorio.");
+
+        return valor.Trim();
+    }
 
     private static EstadoDocumentoCompra ParsearEstadoParaGuardar(string? valor, EstadoDocumentoCompra predeterminado)
     {

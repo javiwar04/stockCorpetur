@@ -94,6 +94,7 @@ public class ImportadorExcelService(IApplicationDbContext db) : IImportadorExcel
                 {
                     Fecha = fecha.Value,
                     NumeroDocumento = numeroDoc,
+                    NumeroPedido = numeroDoc,
                     HotelId = hotel.Id,
                     ProveedorId = proveedor.Id,
                     Observaciones = DocumentoCompra.ObservacionImportadoExcel,

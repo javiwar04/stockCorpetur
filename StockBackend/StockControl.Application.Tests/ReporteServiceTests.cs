@@ -18,6 +18,7 @@ public class ReporteServiceTests
         {
             Fecha = new DateOnly(2026, 7, 2),
             NumeroDocumento = "P2-001",
+            NumeroPedido = "P2-001",
             HotelId = 1,
             ProveedorId = 2,
             Estado = EstadoDocumentoCompra.Recibido,

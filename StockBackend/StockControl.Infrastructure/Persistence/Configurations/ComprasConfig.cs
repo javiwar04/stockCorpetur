@@ -10,6 +10,7 @@ public class DocumentoCompraConfig : IEntityTypeConfiguration<DocumentoCompra>
     public void Configure(EntityTypeBuilder<DocumentoCompra> b)
     {
         b.Property(x => x.NumeroDocumento).HasMaxLength(60).IsRequired();
+        b.Property(x => x.NumeroPedido).HasMaxLength(60).IsRequired();
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).IsRequired();
         b.Property(x => x.TipoCompra).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(TipoCompra.Ordinaria);
         b.Property(x => x.Retencion).HasPrecision(18, 2);

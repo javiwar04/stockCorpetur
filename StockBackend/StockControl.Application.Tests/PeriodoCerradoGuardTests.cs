@@ -19,6 +19,7 @@ public class PeriodoCerradoGuardTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CrearAsync(new CrearDocumentoCompraRequest(
             new DateOnly(2026, 5, 12),
             "LOCK-DOC",
+            "LOCK-PED",
             1,
             1,
             0,
@@ -28,6 +29,7 @@ public class PeriodoCerradoGuardTests
         var abierto = await service.CrearAsync(new CrearDocumentoCompraRequest(
             new DateOnly(2026, 6, 1),
             "OPEN-DOC",
+            "OPEN-PED",
             1,
             1,
             0,
@@ -49,6 +51,7 @@ public class PeriodoCerradoGuardTests
         var documento = await service.CrearAsync(new CrearDocumentoCompraRequest(
             new DateOnly(2026, 5, 12),
             "REOPEN-DOC",
+            "REOPEN-PED",
             1,
             1,
             0,

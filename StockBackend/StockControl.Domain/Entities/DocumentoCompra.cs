@@ -16,6 +16,9 @@ public class DocumentoCompra : EntidadBase
     /// <summary>Número de documento / factura (obligatorio).</summary>
     public string NumeroDocumento { get; set; } = null!;
 
+    /// <summary>Numero de pedido interno asociado al documento (obligatorio).</summary>
+    public string NumeroPedido { get; set; } = null!;
+
     public int HotelId { get; set; }
     public Hotel Hotel { get; set; } = null!;
 

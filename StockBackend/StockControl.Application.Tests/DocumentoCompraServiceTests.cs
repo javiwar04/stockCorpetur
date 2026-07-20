@@ -7,7 +7,7 @@ namespace StockControl.Application.Tests;
 public class DocumentoCompraServiceTests
 {
     private static CrearDocumentoCompraRequest Peticion(int hotelId = 1, string numero = "DOC-001") => new(
-        new DateOnly(2026, 7, 1), numero, hotelId, 1, 0, null,
+        new DateOnly(2026, 7, 1), numero, numero, hotelId, 1, 0, null,
         [new CrearDetalleCompraRequest(1, 1, 10, 6)]);
 
     [Fact]
@@ -111,7 +111,7 @@ public class DocumentoCompraServiceTests
         var service = new DocumentoCompraService(db, new CurrentUserFake(esAdmin: true));
         // Unidad 99 no existe como conversión del producto 1.
         var peticion = new CrearDocumentoCompraRequest(
-            new DateOnly(2026, 7, 1), "DOC-X", 1, 1, 0, null,
+            new DateOnly(2026, 7, 1), "DOC-X", "PED-X", 1, 1, 0, null,
             [new CrearDetalleCompraRequest(1, 99, 10, 6)]);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CrearAsync(peticion));
@@ -124,7 +124,7 @@ public class DocumentoCompraServiceTests
         var service = new DocumentoCompraService(db, new CurrentUserFake(esAdmin: true));
         // Compra en cajas (unidad 2, factor 25).
         var peticion = new CrearDocumentoCompraRequest(
-            new DateOnly(2026, 7, 1), "DOC-CAJA", 1, 1, 0, null,
+            new DateOnly(2026, 7, 1), "DOC-CAJA", "PED-CAJA", 1, 1, 0, null,
             [new CrearDetalleCompraRequest(1, 2, 2, 150)]);
 
         await service.CrearAsync(peticion);
@@ -143,7 +143,7 @@ public class DocumentoCompraServiceTests
         var creado = await service.CrearAsync(Peticion());
 
         var actualizado = await service.ActualizarAsync(creado.Id, new CrearDocumentoCompraRequest(
-            new DateOnly(2026, 7, 2), "DOC-001", 1, 1, 0, "corregido",
+            new DateOnly(2026, 7, 2), "DOC-001", "PED-001-ACT", 1, 1, 0, "corregido",
             [new CrearDetalleCompraRequest(1, 1, 8, 6)]));
 
         Assert.NotNull(actualizado);

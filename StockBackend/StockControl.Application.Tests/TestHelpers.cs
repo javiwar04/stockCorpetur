@@ -54,6 +54,7 @@ public static class TestDb
         {
             Fecha = fecha,
             NumeroDocumento = numero,
+            NumeroPedido = numero,
             HotelId = hotelId,
             ProveedorId = 1,
             Detalles =
