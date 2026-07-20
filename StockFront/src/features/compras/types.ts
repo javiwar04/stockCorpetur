@@ -16,6 +16,7 @@ export interface DocumentoCompra {
   id: number;
   fecha: string;
   numeroDocumento: string;
+  numeroPedido: string;
   hotelId: number;
   hotelNombre: string;
   proveedorId: number;
@@ -32,6 +33,7 @@ export interface DocumentoCompraResumen {
   id: number;
   fecha: string;
   numeroDocumento: string;
+  numeroPedido: string;
   hotelId: number;
   hotelNombre: string;
   proveedorId: number;
@@ -51,6 +53,7 @@ export interface LineaNueva {
 export interface CrearDocumentoCompraRequest {
   fecha: string;
   numeroDocumento: string;
+  numeroPedido: string;
   hotelId: number;
   proveedorId: number;
   estado?: EstadoDocumentoCompra;

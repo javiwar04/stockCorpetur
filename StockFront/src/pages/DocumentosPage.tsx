@@ -141,7 +141,7 @@ export function DocumentosPage() {
     const texto = filtroTexto.trim().toLowerCase();
     if (!texto) return documentos ?? [];
     return (documentos ?? []).filter((d) =>
-      [d.numeroDocumento, d.hotelNombre, d.proveedorNombre, d.tipoCompra ?? 'Ordinaria'].some((v) =>
+      [d.numeroDocumento, d.numeroPedido ?? '', d.hotelNombre, d.proveedorNombre, d.tipoCompra ?? 'Ordinaria'].some((v) =>
         v.toLowerCase().includes(texto),
       ),
     );
@@ -160,6 +160,7 @@ export function DocumentosPage() {
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [fecha, setFecha] = useState(() => fechaInput(new Date()));
   const [numeroDocumento, setNumeroDocumento] = useState('');
+  const [numeroPedido, setNumeroPedido] = useState('');
   const [hotelId, setHotelId] = useState<number | ''>('');
   const [proveedorId, setProveedorId] = useState<number | ''>('');
   const [estado, setEstado] = useState<EstadoDocumentoCompra>('Recibido');
@@ -176,6 +177,7 @@ export function DocumentosPage() {
     setEditandoId(null);
     setFecha(fechaInput(new Date()));
     setNumeroDocumento('');
+    setNumeroPedido('');
     setHotelId('');
     setProveedorId('');
     setEstado('Recibido');
@@ -218,6 +220,7 @@ export function DocumentosPage() {
     setEditandoId(doc.id);
     setFecha(doc.fecha);
     setNumeroDocumento(doc.numeroDocumento);
+    setNumeroPedido(doc.numeroPedido ?? '');
     setHotelId(doc.hotelId);
     setProveedorId(doc.proveedorId);
     setEstado(doc.estado);
@@ -271,6 +274,7 @@ export function DocumentosPage() {
     setEditandoId(null);
     setFecha(fechaInput(new Date()));
     setNumeroDocumento('');
+    setNumeroPedido('');
     setHotelId(sugerencia.hotelId);
     setProveedorId(proveedorActivo);
     setEstado('Borrador');
@@ -335,6 +339,10 @@ export function DocumentosPage() {
     e.preventDefault();
     setError(null);
 
+    const numeroDocumentoLimpio = numeroDocumento.trim();
+    const numeroPedidoLimpio = numeroPedido.trim();
+    if (!numeroDocumentoLimpio) return setError('Ingresa el No. Documento.');
+    if (!numeroPedidoLimpio) return setError('Ingresa el No. de pedido.');
     if (!hotelId || !proveedorId) return setError('Selecciona hotel y proveedor.');
     const detalles = lineas
       .filter((l) => l.productoId && l.unidadId && l.cantidad && l.precioUnitario)
@@ -349,7 +357,8 @@ export function DocumentosPage() {
 
     crearMutation.mutate({
       fecha,
-      numeroDocumento,
+      numeroDocumento: numeroDocumentoLimpio,
+      numeroPedido: numeroPedidoLimpio,
       hotelId: Number(hotelId),
       proveedorId: Number(proveedorId),
       estado,
@@ -410,7 +419,7 @@ export function DocumentosPage() {
             <input
               value={filtroTexto}
               onChange={(e) => setFiltroTexto(e.target.value)}
-              placeholder="Documento, hotel o proveedor"
+              placeholder="Documento, pedido, hotel o proveedor"
               className="field"
             />
           </div>
@@ -474,6 +483,7 @@ export function DocumentosPage() {
               <tr>
                 <th className="th">Fecha</th>
                 <th className="th">Documento</th>
+                <th className="th">Pedido</th>
                 <th className="th">Hotel</th>
                 <th className="th">Proveedor</th>
                 <th className="th">Tipo</th>
@@ -485,7 +495,7 @@ export function DocumentosPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="empty-cell">Cargando documentos…</td>
+                  <td colSpan={9} className="empty-cell">Cargando documentos…</td>
                 </tr>
               )}
               {!isLoading &&
@@ -495,6 +505,7 @@ export function DocumentosPage() {
                     <td className="td">
                       <span className="font-semibold text-slate-800">{d.numeroDocumento}</span>
                     </td>
+                    <td className="td text-slate-600">{d.numeroPedido || '-'}</td>
                     <td className="td text-slate-600">{d.hotelNombre}</td>
                     <td className="td text-slate-600">{d.proveedorNombre}</td>
                     <td className="td">
@@ -550,7 +561,7 @@ export function DocumentosPage() {
                 ))}
               {!isLoading && documentosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="empty-cell">
+                  <td colSpan={9} className="empty-cell">
                     No hay documentos con estos filtros. Ajusta la búsqueda o registra una compra nueva.
                   </td>
                 </tr>
@@ -565,7 +576,7 @@ export function DocumentosPage() {
           <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={cerrarForm} />
           <form
             onSubmit={enviar}
-            className="absolute right-0 top-0 flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl"
+            className="absolute right-0 top-0 flex h-full w-full max-w-6xl flex-col bg-white shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
               <div>
@@ -600,7 +611,7 @@ export function DocumentosPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
                 <div>
                   <label className="label">Fecha *</label>
                   <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="field" />
@@ -608,6 +619,10 @@ export function DocumentosPage() {
                 <div>
                   <label className="label">No. Documento *</label>
                   <input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} required className="field" />
+                </div>
+                <div>
+                  <label className="label">No. de pedido *</label>
+                  <input value={numeroPedido} onChange={(e) => setNumeroPedido(e.target.value)} required className="field" />
                 </div>
                 <div>
                   <label className="label">Hotel *</label>
@@ -716,14 +731,14 @@ export function DocumentosPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="label">Unidad</label>
+                          <label className="label">Unidad de medida</label>
                           <select
                             value={linea.unidadId}
                             onChange={(e) => actualizarLinea(idx, { unidadId: e.target.value === '' ? '' : Number(e.target.value) })}
                             disabled={!linea.productoId}
                             className="field bg-white"
                           >
-                            <option value="">Unidad…</option>
+                            <option value="">Selecciona la unidad de medida...</option>
                             {conversiones?.map((c) => (
                               <option key={c.unidadId} value={c.unidadId}>
                                 {c.unidadNombre}
