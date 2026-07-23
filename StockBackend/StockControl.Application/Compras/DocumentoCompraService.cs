@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StockControl.Application.Auditoria;
 using StockControl.Application.Cierres;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
@@ -98,6 +99,8 @@ public class DocumentoCompraService(
         {
             if (linea.Cantidad <= 0) throw new InvalidOperationException("La cantidad debe ser mayor a cero.");
             if (linea.PrecioUnitario < 0) throw new InvalidOperationException("El precio no puede ser negativo.");
+            DecimalPrecision.ValidarEscalaOperativa(linea.Cantidad, "La cantidad");
+            DecimalPrecision.ValidarEscalaOperativa(linea.PrecioUnitario, "El precio unitario");
 
             var conversion = await db.Conversiones.FirstOrDefaultAsync(
                 c => c.ProductoId == linea.ProductoId && c.UnidadId == linea.UnidadId, ct)
@@ -121,7 +124,7 @@ public class DocumentoCompraService(
             documento.Id,
             documento.HotelId,
             $"Documento {documento.NumeroDocumento} creado",
-            $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N2}",
+            $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N4}",
             ct);
 
         return (await ObtenerAsync(documento.Id, ct))!;
@@ -173,6 +176,8 @@ public class DocumentoCompraService(
         {
             if (linea.Cantidad <= 0) throw new InvalidOperationException("La cantidad debe ser mayor a cero.");
             if (linea.PrecioUnitario < 0) throw new InvalidOperationException("El precio no puede ser negativo.");
+            DecimalPrecision.ValidarEscalaOperativa(linea.Cantidad, "La cantidad");
+            DecimalPrecision.ValidarEscalaOperativa(linea.PrecioUnitario, "El precio unitario");
 
             var conversion = await db.Conversiones.FirstOrDefaultAsync(
                 c => c.ProductoId == linea.ProductoId && c.UnidadId == linea.UnidadId, ct)
@@ -195,7 +200,7 @@ public class DocumentoCompraService(
             documento.Id,
             documento.HotelId,
             $"Documento {documento.NumeroDocumento} actualizado",
-            $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N2}",
+            $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N4}",
             ct);
         return await ObtenerAsync(id, ct);
     }

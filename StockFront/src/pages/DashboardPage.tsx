@@ -30,8 +30,8 @@ const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'S
 const MESES_LARGOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 const etiquetaMes = (anio: number, mes: number) => `${MESES_CORTOS[mes - 1]} ${String(anio).slice(2)}`;
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const numero = (n: number) => n.toLocaleString('es-GT', { maximumFractionDigits: 2 });
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
+const numero = (n: number) => n.toLocaleString('es-GT', { maximumFractionDigits: 4 });
 
 function IconoTendencia({ tipo }: { tipo: 'up' | 'down' | 'flat' }) {
   const path =

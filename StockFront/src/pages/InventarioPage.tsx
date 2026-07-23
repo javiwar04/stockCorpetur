@@ -36,8 +36,8 @@ const BADGE_TIPO: Record<string, string> = {
   Entrada: 'badge-green',
 };
 
-const numero = (n: number) => n.toLocaleString('es-GT', { maximumFractionDigits: 2 });
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const numero = (n: number) => n.toLocaleString('es-GT', { maximumFractionDigits: 4 });
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 function fechaInput(fecha: Date) {
   const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
@@ -413,7 +413,7 @@ export function InventarioPage() {
             <label className="label">Cantidad</label>
             <input
               type="number"
-              step="0.01"
+              step="0.0001"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
               required
@@ -739,7 +739,7 @@ export function InventarioPage() {
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
+                            step="0.0001"
                             value={minimosEdit[e.productoId] ?? ''}
                             onChange={(ev) => setMinimosEdit((prev) => ({ ...prev, [e.productoId]: ev.target.value }))}
                             className="field w-24 py-1.5 text-right"

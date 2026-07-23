@@ -24,6 +24,38 @@ public class DocumentoCompraServiceTests
     }
 
     [Fact]
+    public async Task Crear_ConCuatroDecimales_ConservaCantidadYPrecio()
+    {
+        using var db = TestDb.Crear();
+        var service = new DocumentoCompraService(db, new CurrentUserFake(esAdmin: true));
+        var peticion = Peticion() with
+        {
+            Detalles = [new CrearDetalleCompraRequest(1, 1, 1.2345m, 6.7891m)],
+        };
+
+        var doc = await service.CrearAsync(peticion);
+        var detalle = Assert.Single(doc.Detalles);
+
+        Assert.Equal(1.2345m, detalle.Cantidad);
+        Assert.Equal(6.7891m, detalle.PrecioUnitario);
+        Assert.Equal(8.38114395m, detalle.Total);
+    }
+
+    [Fact]
+    public async Task Crear_ConMasDeCuatroDecimales_Falla()
+    {
+        using var db = TestDb.Crear();
+        var service = new DocumentoCompraService(db, new CurrentUserFake(esAdmin: true));
+        var peticion = Peticion() with
+        {
+            Detalles = [new CrearDetalleCompraRequest(1, 1, 1.23456m, 6m)],
+        };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CrearAsync(peticion));
+        Assert.Contains("maximo 4 decimales", error.Message);
+    }
+
+    [Fact]
     public async Task Crear_Borrador_NoCuentaEnInventarioHastaRecibir()
     {
         using var db = TestDb.Crear();

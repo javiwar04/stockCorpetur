@@ -53,7 +53,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             return new GastoPorHotelDto(
                 x.HotelId, x.Nombre, x.Gasto,
                 numComensales,
-                numComensales is null ? null : Math.Round(x.Gasto / numComensales.Value, 2),
+                numComensales is null ? null : Math.Round(x.Gasto / numComensales.Value, 4),
                 presupuesto,
                 presupuesto is null ? null : Math.Round(x.Gasto / presupuesto.Value * 100, 1));
         }).ToList();
@@ -109,7 +109,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             .ToListAsync(ct);
 
         var serie = puntos
-            .Select(p => new PuntoMensualDto(p.Year, p.Month, Math.Round(p.Gasto / p.CantidadBase, 2)))
+            .Select(p => new PuntoMensualDto(p.Year, p.Month, Math.Round(p.Gasto / p.CantidadBase, 4)))
             .ToList();
 
         return new TendenciaPrecioDto(producto.Id, producto.Nombre, producto.UnidadBase.Nombre, serie);
@@ -194,7 +194,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             if (incremento >= umbralPorcentaje)
                 alertas.Add(new AlertaPrecioDto(
                     r.ProductoId, r.Producto, r.Unidad,
-                    Math.Round(r.Precio, 2), Math.Round(referencia, 2),
+                    Math.Round(r.Precio, 4), Math.Round(referencia, 4),
                     Math.Round(incremento, 1), r.UltimaCompra));
         }
 
@@ -326,10 +326,10 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 s.Producto,
                 s.Categoria,
                 s.UnidadBase,
-                Math.Round(s.Existencia, 2),
-                Math.Round(s.StockMinimo, 2),
-                Math.Round(s.Faltante, 2),
-                Math.Round(s.ValorFaltante, 2),
+                Math.Round(s.Existencia, 4),
+                Math.Round(s.StockMinimo, 4),
+                Math.Round(s.Faltante, 4),
+                Math.Round(s.ValorFaltante, 4),
                 s.Estado))
             .ToList();
 
@@ -352,8 +352,8 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                     producto?.Nombre ?? "",
                     producto?.Categoria ?? "",
                     producto?.UnidadBase ?? "",
-                    Math.Round(cantidad, 2),
-                    Math.Round(cantidad * precio, 2));
+                    Math.Round(cantidad, 4),
+                    Math.Round(cantidad * precio, 4));
             })
             .OrderByDescending(m => m.ValorEstimado)
             .ThenByDescending(m => m.CantidadBase)
@@ -402,8 +402,8 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 .Where(c => c.Saldo > 0)
                 .ToList();
 
-            saldoCxp = Math.Round(cuentas.Sum(c => c.Saldo), 2);
-            saldoVencido = Math.Round(cuentas.Sum(c => c.SaldoVencido), 2);
+            saldoCxp = Math.Round(cuentas.Sum(c => c.Saldo), 4);
+            saldoVencido = Math.Round(cuentas.Sum(c => c.SaldoVencido), 4);
             documentosVencidos = cuentas.Count(c => c.Vencido);
 
             topProveedores = cuentas
@@ -412,8 +412,8 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                     g.Key.ProveedorId,
                     g.Key.Proveedor,
                     g.Count(),
-                    Math.Round(g.Sum(c => c.Saldo), 2),
-                    Math.Round(g.Sum(c => c.SaldoVencido), 2)))
+                    Math.Round(g.Sum(c => c.Saldo), 4),
+                    Math.Round(g.Sum(c => c.SaldoVencido), 4)))
                 .OrderByDescending(p => p.Saldo)
                 .Take(8)
                 .ToList();
@@ -422,12 +422,12 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
         return new DashboardGerencialDto(
             anio,
             mes,
-            Math.Round(valorInventario, 2),
+            Math.Round(valorInventario, 4),
             stockCritico.Count,
-            Math.Round(stockCritico.Sum(s => s.ValorFaltanteEstimado), 2),
-            Math.Round(valorMermas, 2),
+            Math.Round(stockCritico.Sum(s => s.ValorFaltanteEstimado), 4),
+            Math.Round(valorMermas, 4),
             mermasMes.Count,
-            Math.Round(valorAjustes, 2),
+            Math.Round(valorAjustes, 4),
             ajustesMes.Count,
             incluyeFinanzas,
             saldoCxp,
@@ -506,8 +506,8 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
     private static TopProductoDto MapearTop(AgregadoProducto a) => new(
         a.ProductoId, a.Producto, a.Categoria.ToString(), a.Unidad,
-        Math.Round(a.CantidadBase, 2), Math.Round(a.Gasto, 2),
-        a.CantidadBase == 0 ? 0 : Math.Round(a.Gasto / a.CantidadBase, 2));
+        Math.Round(a.CantidadBase, 4), Math.Round(a.Gasto, 4),
+        a.CantidadBase == 0 ? 0 : Math.Round(a.Gasto / a.CantidadBase, 4));
 
     private static DateOnly MesesAtras(int meses)
     {

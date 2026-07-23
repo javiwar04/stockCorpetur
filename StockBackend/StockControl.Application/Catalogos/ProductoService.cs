@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
@@ -97,6 +98,8 @@ public class ProductoService(IApplicationDbContext db) : IProductoService
     {
         if (req.FactorABase <= 0)
             throw new InvalidOperationException("El factor de conversión debe ser mayor a cero.");
+
+        DecimalPrecision.ValidarEscalaOperativa(req.FactorABase, "El factor de conversion");
 
         var existe = await db.Conversiones.AnyAsync(c => c.ProductoId == productoId && c.UnidadId == req.UnidadId, ct);
         if (existe)

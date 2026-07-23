@@ -14,8 +14,8 @@ import {
   type PlantillaConteoItem,
 } from '../features/conteos/conteosApi';
 
-const numero = (n: number) => n.toLocaleString('es-GT', { maximumFractionDigits: 2 });
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const numero = (n: number) => n.toLocaleString('es-GT', { maximumFractionDigits: 4 });
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 function fechaInput(fecha: Date) {
   const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
@@ -350,7 +350,7 @@ export function ConteosPage() {
                         <input
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="0.0001"
                           value={valor}
                           onChange={(e) => setCantidades((prev) => ({ ...prev, [p.productoId]: e.target.value }))}
                           className="field ml-auto w-28 py-1.5 text-right"

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listarAlertas, type Alerta, type SeveridadAlerta } from '../features/alertas/alertasApi';
 
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 const SEVERIDADES: Array<SeveridadAlerta | ''> = ['', 'Critica', 'Alta', 'Media', 'Baja'];
 

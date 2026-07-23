@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StockControl.Application.Auditoria;
 using StockControl.Application.Cierres;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
@@ -29,10 +30,10 @@ public class ConteoInventarioService(
                 e.Producto,
                 e.Categoria,
                 e.UnidadBase,
-                Math.Round(e.ExistenciaSistemaBase, 2),
-                Math.Round(e.StockMinimoBase, 2),
-                Math.Round(e.UltimoPrecioBase, 2),
-                Math.Round(Math.Max(0, e.ExistenciaSistemaBase) * e.UltimoPrecioBase, 2)))
+                Math.Round(e.ExistenciaSistemaBase, 4),
+                Math.Round(e.StockMinimoBase, 4),
+                Math.Round(e.UltimoPrecioBase, 4),
+                Math.Round(Math.Max(0, e.ExistenciaSistemaBase) * e.UltimoPrecioBase, 4)))
             .ToList();
     }
 
@@ -96,6 +97,8 @@ public class ConteoInventarioService(
 
         if (req.Detalles.Any(d => d.CantidadFisicaBase < 0))
             throw new InvalidOperationException("La cantidad fisica no puede ser negativa.");
+        foreach (var detalle in req.Detalles)
+            DecimalPrecision.ValidarEscalaOperativa(detalle.CantidadFisicaBase, "La cantidad fisica");
 
         var hotelExiste = await db.Hoteles.AnyAsync(h => h.Id == req.HotelId && h.Activo, ct);
         if (!hotelExiste)
@@ -125,7 +128,7 @@ public class ConteoInventarioService(
                 CantidadSistemaBase = producto.ExistenciaSistemaBase,
                 CantidadFisicaBase = linea.CantidadFisicaBase,
                 DiferenciaBase = diferencia,
-                ValorDiferenciaEstimado = Math.Round(diferencia * producto.UltimoPrecioBase, 2),
+                ValorDiferenciaEstimado = Math.Round(diferencia * producto.UltimoPrecioBase, 4),
             });
         }
 
@@ -301,7 +304,7 @@ public class ConteoInventarioService(
         c.Estado.ToString(),
         c.Detalles.Count,
         c.Detalles.Count(d => d.DiferenciaBase != 0),
-        Math.Round(c.Detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado)), 2),
+        Math.Round(c.Detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado)), 4),
         c.Observaciones,
         c.CreadoEn,
         c.CreadoPor,
@@ -319,10 +322,10 @@ public class ConteoInventarioService(
                 d.Producto.Nombre,
                 d.Producto.Categoria.ToString(),
                 d.Producto.UnidadBase.Nombre,
-                Math.Round(d.CantidadSistemaBase, 2),
-                Math.Round(d.CantidadFisicaBase, 2),
-                Math.Round(d.DiferenciaBase, 2),
-                Math.Round(d.ValorDiferenciaEstimado, 2),
+                Math.Round(d.CantidadSistemaBase, 4),
+                Math.Round(d.CantidadFisicaBase, 4),
+                Math.Round(d.DiferenciaBase, 4),
+                Math.Round(d.ValorDiferenciaEstimado, 4),
                 d.MovimientoAjusteId))
             .ToList();
 
@@ -339,7 +342,7 @@ public class ConteoInventarioService(
             c.AjustesAplicadosPor,
             detalles.Count,
             detalles.Count(d => d.DiferenciaBase != 0),
-            Math.Round(detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado)), 2),
+            Math.Round(detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado)), 4),
             detalles);
     }
 

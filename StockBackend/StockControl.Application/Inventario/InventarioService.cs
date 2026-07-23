@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StockControl.Application.Auditoria;
 using StockControl.Application.Cierres;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
@@ -80,13 +81,13 @@ public class InventarioService(
                     p.Nombre,
                     p.Categoria.ToString(),
                     p.UnidadBase.Nombre,
-                    Math.Round(compras + entradas, 2),
-                    Math.Round(salidas, 2),
-                    Math.Round(mermas, 2),
-                    Math.Round(ajustes, 2),
-                    Math.Round(existencia, 2),
-                    Math.Round(stockMinimo, 2),
-                    Math.Round(faltante, 2),
+                    Math.Round(compras + entradas, 4),
+                    Math.Round(salidas, 4),
+                    Math.Round(mermas, 4),
+                    Math.Round(ajustes, 4),
+                    Math.Round(existencia, 4),
+                    Math.Round(stockMinimo, 4),
+                    Math.Round(faltante, 4),
                     EstadoStock(existencia, stockMinimo));
             })
             .Where(e => e.Comprado != 0 || e.Salidas != 0 || e.Mermas != 0 || e.Ajustes != 0 || e.StockMinimo != 0)
@@ -140,8 +141,8 @@ public class InventarioService(
                 d.CantidadBase,
                 0m,
                 0m,
-                d.FactorABase == 0 ? null : Math.Round(d.PrecioPorUnidadBase, 2),
-                Math.Round(d.Total, 2),
+                d.FactorABase == 0 ? null : Math.Round(d.PrecioPorUnidadBase, 4),
+                Math.Round(d.Total, 4),
                 d.DocumentoCompra.NumeroDocumento,
                 d.DocumentoCompra.Proveedor.Nombre,
                 null))
@@ -188,10 +189,10 @@ public class InventarioService(
                 linea.Fecha,
                 linea.Tipo,
                 linea.Referencia,
-                Math.Round(linea.Entrada, 2),
-                Math.Round(linea.Salida, 2),
-                Math.Round(linea.Ajuste, 2),
-                Math.Round(saldo, 2),
+                Math.Round(linea.Entrada, 4),
+                Math.Round(linea.Salida, 4),
+                Math.Round(linea.Ajuste, 4),
+                Math.Round(saldo, 4),
                 linea.CostoUnitario,
                 linea.CostoTotal,
                 linea.Documento,
@@ -207,11 +208,11 @@ public class InventarioService(
             producto.UnidadBase.Nombre,
             filtro.Desde,
             filtro.Hasta,
-            Math.Round(saldoInicial, 2),
-            Math.Round(lineasPeriodo.Sum(l => l.Entrada), 2),
-            Math.Round(lineasPeriodo.Sum(l => l.Salida), 2),
-            Math.Round(lineasPeriodo.Sum(l => l.Ajuste), 2),
-            Math.Round(saldo, 2),
+            Math.Round(saldoInicial, 4),
+            Math.Round(lineasPeriodo.Sum(l => l.Entrada), 4),
+            Math.Round(lineasPeriodo.Sum(l => l.Salida), 4),
+            Math.Round(lineasPeriodo.Sum(l => l.Ajuste), 4),
+            Math.Round(saldo, 4),
             kardexMovimientos);
     }
 
@@ -261,10 +262,14 @@ public class InventarioService(
         {
             throw new InvalidOperationException("La cantidad debe ser mayor a cero.");
         }
+        DecimalPrecision.ValidarEscalaOperativa(req.Cantidad, "La cantidad");
 
         var conversion = await db.Conversiones.FirstOrDefaultAsync(
             c => c.ProductoId == req.ProductoId && c.UnidadId == req.UnidadId, ct)
             ?? throw new InvalidOperationException("No existe conversión configurada para ese producto y unidad.");
+
+        var cantidadBase = req.Cantidad * conversion.FactorABase;
+        DecimalPrecision.ValidarEscalaOperativa(cantidadBase, "La cantidad base convertida");
 
         var movimiento = new MovimientoInventario
         {
@@ -272,7 +277,7 @@ public class InventarioService(
             Fecha = req.Fecha,
             HotelId = req.HotelId,
             ProductoId = req.ProductoId,
-            CantidadBase = req.Cantidad * conversion.FactorABase,
+            CantidadBase = cantidadBase,
             Referencia = req.Referencia,
         };
 
@@ -284,7 +289,7 @@ public class InventarioService(
             movimiento.Id,
             movimiento.HotelId,
             $"{movimiento.Tipo} de inventario registrado",
-            $"ProductoId {movimiento.ProductoId}; cantidad base {movimiento.CantidadBase:N2}; fecha {movimiento.Fecha:dd/MM/yyyy}",
+            $"ProductoId {movimiento.ProductoId}; cantidad base {movimiento.CantidadBase:N4}; fecha {movimiento.Fecha:dd/MM/yyyy}",
             ct);
 
         var completo = await db.Movimientos
@@ -317,7 +322,7 @@ public class InventarioService(
             id,
             hotelId,
             $"{tipo} de inventario eliminado",
-            $"ProductoId {productoId}; cantidad base {cantidad:N2}; fecha {fecha:dd/MM/yyyy}",
+            $"ProductoId {productoId}; cantidad base {cantidad:N4}; fecha {fecha:dd/MM/yyyy}",
             ct);
         return true;
     }
@@ -336,7 +341,7 @@ public class InventarioService(
                 s.ProductoId,
                 s.Producto.Nombre,
                 s.Producto.UnidadBase.Nombre,
-                Math.Round(s.CantidadMinimaBase, 2)))
+                Math.Round(s.CantidadMinimaBase, 4)))
             .ToListAsync(ct);
     }
 
@@ -350,6 +355,8 @@ public class InventarioService(
 
         if (req.CantidadMinimaBase <= 0)
             throw new InvalidOperationException("El stock mínimo debe ser mayor a cero.");
+
+        DecimalPrecision.ValidarEscalaOperativa(req.CantidadMinimaBase, "El stock minimo");
 
         var producto = await db.Productos
             .Include(p => p.UnidadBase)
@@ -385,7 +392,7 @@ public class InventarioService(
             req.ProductoId,
             producto.Nombre,
             producto.UnidadBase.Nombre,
-            Math.Round(stock.CantidadMinimaBase, 2));
+            Math.Round(stock.CantidadMinimaBase, 4));
     }
 
     public async Task<bool> EliminarStockMinimoAsync(int hotelId, int productoId, CancellationToken ct = default)
@@ -504,11 +511,11 @@ public class InventarioService(
                 e.Faltante,
                 e.Existencia,
                 e.StockMinimo,
-                Math.Round(precioBase, 2),
+                Math.Round(precioBase, 4),
                 ultimo.DocumentoCompra.ProveedorId,
                 ultimo.DocumentoCompra.Proveedor.Nombre,
                 ultimo.DocumentoCompra.Fecha,
-                Math.Round(e.Faltante * precioBase, 2));
+                Math.Round(e.Faltante * precioBase, 4));
         }).ToList();
     }
 

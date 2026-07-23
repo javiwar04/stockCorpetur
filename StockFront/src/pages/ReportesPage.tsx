@@ -11,7 +11,7 @@ import {
 } from '../features/reportes/reportesApi';
 import { useAuth } from '../features/auth/authStore';
 
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 const fechaInput = (fecha: Date) => {
   const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);

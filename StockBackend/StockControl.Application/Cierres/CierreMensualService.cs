@@ -131,7 +131,7 @@ public class CierreMensualService(
             cierre.Id,
             cierre.HotelId,
             $"Cierre {cierre.Mes}/{cierre.Anio} creado para {hotel.Nombre}",
-            $"Compras Q{cierre.ComprasTotal:N2}; inventario Q{cierre.ValorInventarioEstimado:N2}; CXP Q{cierre.SaldoCuentasPorPagar:N2}",
+            $"Compras Q{cierre.ComprasTotal:N4}; inventario Q{cierre.ValorInventarioEstimado:N4}; CXP Q{cierre.SaldoCuentasPorPagar:N4}",
             ct);
 
         return (await ObtenerAsync(cierre.Id, ct))!;
@@ -403,5 +403,5 @@ public class CierreMensualService(
         await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(accion, entidad, entidadId, hotelId, resumen, detalle), ct);
     }
 
-    private static decimal Redondear(decimal valor) => Math.Round(valor, 2);
+    private static decimal Redondear(decimal valor) => Math.Round(valor, 4);
 }

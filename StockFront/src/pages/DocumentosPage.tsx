@@ -20,7 +20,7 @@ function lineaVacia(): LineaNueva {
   return { productoId: '', unidadId: '', cantidad: '', precioUnitario: '' };
 }
 
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 const fechaCorta = (fecha: string) =>
   new Intl.DateTimeFormat('es-GT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${fecha}T00:00:00`));
@@ -28,6 +28,11 @@ const fechaCorta = (fecha: string) =>
 const fechaInput = (fecha: Date) => {
   const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+};
+
+const tieneMaximoCuatroDecimales = (valor: string) => {
+  const [, decimales = ''] = valor.split(/[.,]/);
+  return decimales.length <= 4;
 };
 
 const rangoMesActual = () => {
@@ -344,6 +349,14 @@ export function DocumentosPage() {
     if (!numeroDocumentoLimpio) return setError('Ingresa el No. Documento.');
     if (!numeroPedidoLimpio) return setError('Ingresa el No. de pedido.');
     if (!hotelId || !proveedorId) return setError('Selecciona hotel y proveedor.');
+    const lineaConMasDeCuatroDecimales = lineas.some(
+      (l) =>
+        (l.cantidad && !tieneMaximoCuatroDecimales(l.cantidad)) ||
+        (l.precioUnitario && !tieneMaximoCuatroDecimales(l.precioUnitario)),
+    );
+    if (lineaConMasDeCuatroDecimales) {
+      return setError('Cantidad y precio unitario permiten maximo 4 decimales.');
+    }
     const detalles = lineas
       .filter((l) => l.productoId && l.unidadId && l.cantidad && l.precioUnitario)
       .map((l) => ({
@@ -750,7 +763,7 @@ export function DocumentosPage() {
                           <label className="label">Cantidad</label>
                           <input
                             type="number"
-                            step="0.01"
+                            step="0.0001"
                             min="0"
                             value={linea.cantidad}
                             onChange={(e) => actualizarLinea(idx, { cantidad: e.target.value })}
@@ -761,7 +774,7 @@ export function DocumentosPage() {
                           <label className="label">Precio unit.</label>
                           <input
                             type="number"
-                            step="0.01"
+                            step="0.0001"
                             min="0"
                             value={linea.precioUnitario}
                             onChange={(e) => actualizarLinea(idx, { precioUnitario: e.target.value })}

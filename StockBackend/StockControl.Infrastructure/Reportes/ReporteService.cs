@@ -42,14 +42,14 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaDocs.Cell(fila, 4).Value = d.Proveedor.Nombre;
             hojaDocs.Cell(fila, 5).Value = d.TipoCompra.ToString();
             hojaDocs.Cell(fila, 6).FormulaA1 = $"=SUMIFS(Detalle!I:I,Detalle!B:B,B{fila},Detalle!C:C,C{fila})";
-            hojaDocs.Cell(fila, 6).Style.NumberFormat.Format = "#,##0.00";
+            hojaDocs.Cell(fila, 6).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
         var filaTotal = fila + 1;
         hojaDocs.Cell(filaTotal, 5).Value = "GRAN TOTAL";
         hojaDocs.Cell(filaTotal, 5).Style.Font.SetBold();
         hojaDocs.Cell(filaTotal, 6).FormulaA1 = $"=SUM(F4:F{fila - 1})";
-        hojaDocs.Cell(filaTotal, 6).Style.Font.SetBold().NumberFormat.Format = "#,##0.00";
+        hojaDocs.Cell(filaTotal, 6).Style.Font.SetBold().NumberFormat.Format = "#,##0.0000";
 
         // --- Hoja 2: Detalle ---
         var hojaDet = libro.Worksheets.Add("Detalle");
@@ -75,9 +75,9 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 hojaDet.Cell(fila, 6).Value = linea.Producto.Categoria.ToString();
                 hojaDet.Cell(fila, 7).Value = linea.Cantidad;
                 hojaDet.Cell(fila, 8).Value = linea.PrecioUnitario;
-                hojaDet.Cell(fila, 8).Style.NumberFormat.Format = "#,##0.00";
+                hojaDet.Cell(fila, 8).Style.NumberFormat.Format = "#,##0.0000";
                 hojaDet.Cell(fila, 9).FormulaA1 = $"=G{fila}*H{fila}";
-                hojaDet.Cell(fila, 9).Style.NumberFormat.Format = "#,##0.00";
+                hojaDet.Cell(fila, 9).Style.NumberFormat.Format = "#,##0.0000";
                 fila++;
             }
         }
@@ -111,9 +111,9 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaRes.Cell(fila, 2).Value = r.Categoria;
             hojaRes.Cell(fila, 3).Value = r.Cantidad;
             hojaRes.Cell(fila, 4).Value = r.Gasto;
-            hojaRes.Cell(fila, 4).Style.NumberFormat.Format = "#,##0.00";
+            hojaRes.Cell(fila, 4).Style.NumberFormat.Format = "#,##0.0000";
             hojaRes.Cell(fila, 5).FormulaA1 = $"=IF(C{fila}=0,0,D{fila}/C{fila})";
-            hojaRes.Cell(fila, 5).Style.NumberFormat.Format = "#,##0.00";
+            hojaRes.Cell(fila, 5).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -156,7 +156,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaTipo.Cell(fila, 4).Value = t.Retencion;
             hojaTipo.Cell(fila, 5).Value = t.Neto;
             hojaTipo.Cell(fila, 6).Value = t.Promedio;
-            hojaTipo.Range(fila, 3, fila, 6).Style.NumberFormat.Format = "#,##0.00";
+            hojaTipo.Range(fila, 3, fila, 6).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -212,13 +212,13 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaLiq.Cell(fila, 6).Value = l.Bruto;
             hojaLiq.Cell(fila, 7).Value = l.Retencion;
             hojaLiq.Cell(fila, 8).Value = l.Neto;
-            hojaLiq.Range(fila, 6, fila, 8).Style.NumberFormat.Format = "#,##0.00";
+            hojaLiq.Range(fila, 6, fila, 8).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
         hojaLiq.Cell(fila + 1, 5).Value = "TOTAL A PAGAR";
         hojaLiq.Cell(fila + 1, 5).Style.Font.SetBold();
         hojaLiq.Cell(fila + 1, 8).Value = liquidacion.Sum(l => l.Neto);
-        hojaLiq.Cell(fila + 1, 8).Style.Font.SetBold().NumberFormat.Format = "#,##0.00";
+        hojaLiq.Cell(fila + 1, 8).Style.Font.SetBold().NumberFormat.Format = "#,##0.0000";
 
         // --- Hoja 6: Facturas por proveedor ---
         var hojaProv = libro.Worksheets.Add("Facturas proveedor");
@@ -245,7 +245,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaProv.Cell(fila, 8).Value = d.Retencion;
             hojaProv.Cell(fila, 9).Value = bruto - d.Retencion;
             hojaProv.Cell(fila, 10).Value = d.Observaciones ?? "";
-            hojaProv.Range(fila, 7, fila, 9).Style.NumberFormat.Format = "#,##0.00";
+            hojaProv.Range(fila, 7, fila, 9).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -325,13 +325,13 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Gasto total").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{granTotal:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{granTotal:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(10);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Neto a pagar").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{netoAPagar:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{netoAPagar:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(10);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
@@ -366,9 +366,9 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(l.Proveedor);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(l.Nit ?? "");
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(l.Documentos.ToString());
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{l.Bruto:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{l.Retencion:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{l.Neto:N2}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{l.Bruto:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{l.Retencion:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{l.Neto:N4}");
                         }
                     });
 
@@ -380,7 +380,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         foreach (var cat in porCategoria)
                         {
                             tabla.Cell().PaddingVertical(2).Text(cat.Categoria);
-                            tabla.Cell().PaddingVertical(2).AlignRight().Text($"Q{cat.Gasto:N2}");
+                            tabla.Cell().PaddingVertical(2).AlignRight().Text($"Q{cat.Gasto:N4}");
                         }
                     });
 
@@ -403,7 +403,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         {
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(tipo.Tipo);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(tipo.Documentos.ToString());
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{tipo.Gasto:N2}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{tipo.Gasto:N4}");
                         }
                     });
 
@@ -435,7 +435,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Hotel.Nombre);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Proveedor.Nombre);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.TipoCompra.ToString());
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{total:N2}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{total:N4}");
                         }
                     });
                 });
@@ -471,11 +471,11 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             ("Unidad base", kardex.UnidadBase),
             ("Desde", kardex.Desde?.ToString("dd/MM/yyyy") ?? "Inicio"),
             ("Hasta", kardex.Hasta?.ToString("dd/MM/yyyy") ?? "Actual"),
-            ("Saldo inicial", kardex.SaldoInicial.ToString("N2")),
-            ("Entradas", kardex.TotalEntradas.ToString("N2")),
-            ("Salidas", kardex.TotalSalidas.ToString("N2")),
-            ("Ajustes", kardex.TotalAjustes.ToString("N2")),
-            ("Saldo final", kardex.SaldoFinal.ToString("N2")),
+            ("Saldo inicial", kardex.SaldoInicial.ToString("N4")),
+            ("Entradas", kardex.TotalEntradas.ToString("N4")),
+            ("Salidas", kardex.TotalSalidas.ToString("N4")),
+            ("Ajustes", kardex.TotalAjustes.ToString("N4")),
+            ("Saldo final", kardex.SaldoFinal.ToString("N4")),
         };
 
         for (var i = 0; i < resumen.Length; i++)
@@ -509,14 +509,14 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             if (m.CostoUnitario is not null) hoja.Cell(fila, 10).Value = m.CostoUnitario.Value;
             if (m.CostoTotal is not null) hoja.Cell(fila, 11).Value = m.CostoTotal.Value;
             hoja.Cell(fila, 12).Value = m.CreadoPor ?? "";
-            hoja.Range(fila, 6, fila, 11).Style.NumberFormat.Format = "#,##0.00";
+            hoja.Range(fila, 6, fila, 11).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
         hoja.Cell(fila + 1, 8).Value = "Saldo final";
         hoja.Cell(fila + 1, 8).Style.Font.SetBold();
         hoja.Cell(fila + 1, 9).Value = kardex.SaldoFinal;
-        hoja.Cell(fila + 1, 9).Style.Font.SetBold().NumberFormat.Format = "#,##0.00";
+        hoja.Cell(fila + 1, 9).Style.Font.SetBold().NumberFormat.Format = "#,##0.0000";
 
         foreach (var ws in libro.Worksheets) ws.Columns().AdjustToContents();
 
@@ -556,7 +556,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaResumen.Cell(i + 4, 1).Value = resumen[i].Etiqueta;
             hojaResumen.Cell(i + 4, 1).Style.Font.SetBold();
             hojaResumen.Cell(i + 4, 2).Value = resumen[i].Valor;
-            hojaResumen.Cell(i + 4, 2).Style.NumberFormat.Format = "#,##0.00";
+            hojaResumen.Cell(i + 4, 2).Style.NumberFormat.Format = "#,##0.0000";
         }
 
         var hojaFacturas = libro.Worksheets.Add("Facturas");
@@ -583,7 +583,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaFacturas.Cell(fila, 10).Value = c.NetoAPagar;
             hojaFacturas.Cell(fila, 11).Value = c.Pagado;
             hojaFacturas.Cell(fila, 12).Value = c.Saldo;
-            hojaFacturas.Range(fila, 8, fila, 12).Style.NumberFormat.Format = "#,##0.00";
+            hojaFacturas.Range(fila, 8, fila, 12).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -610,7 +610,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaPagos.Cell(fila, 6).Value = pago.Pago.Referencia ?? "";
             hojaPagos.Cell(fila, 7).Value = pago.Pago.Observaciones ?? "";
             hojaPagos.Cell(fila, 8).Value = pago.Pago.Monto;
-            hojaPagos.Cell(fila, 8).Style.NumberFormat.Format = "#,##0.00";
+            hojaPagos.Cell(fila, 8).Style.NumberFormat.Format = "#,##0.0000";
             hojaPagos.Cell(fila, 9).Value = pago.Pago.CreadoPor ?? "";
             hojaPagos.Cell(fila, 10).Value = pago.Pago.CreadoEn;
             hojaPagos.Cell(fila, 10).Style.DateFormat.Format = "dd/mm/yyyy hh:mm";
@@ -644,7 +644,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaProveedores.Cell(fila, 4).Value = grupo.Pagado;
             hojaProveedores.Cell(fila, 5).Value = grupo.Saldo;
             hojaProveedores.Cell(fila, 6).Value = grupo.Vencido;
-            hojaProveedores.Range(fila, 3, fila, 6).Style.NumberFormat.Format = "#,##0.00";
+            hojaProveedores.Range(fila, 3, fila, 6).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -687,7 +687,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaResumen.Cell(i + 4, 1).Value = resumen[i].Etiqueta;
             hojaResumen.Cell(i + 4, 1).Style.Font.SetBold();
             hojaResumen.Cell(i + 4, 2).Value = resumen[i].Valor;
-            hojaResumen.Cell(i + 4, 2).Style.NumberFormat.Format = "#,##0.00";
+            hojaResumen.Cell(i + 4, 2).Style.NumberFormat.Format = "#,##0.0000";
         }
 
         var hojaConteos = libro.Worksheets.Add("Conteos");
@@ -709,7 +709,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaConteos.Cell(fila, 5).Value = c.Detalles.Count;
             hojaConteos.Cell(fila, 6).Value = c.Detalles.Count(d => d.DiferenciaBase != 0);
             hojaConteos.Cell(fila, 7).Value = c.Detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado));
-            hojaConteos.Cell(fila, 7).Style.NumberFormat.Format = "#,##0.00";
+            hojaConteos.Cell(fila, 7).Style.NumberFormat.Format = "#,##0.0000";
             hojaConteos.Cell(fila, 8).Value = c.CreadoPor ?? "";
             hojaConteos.Cell(fila, 9).Value = c.CreadoEn;
             hojaConteos.Cell(fila, 9).Style.DateFormat.Format = "dd/mm/yyyy hh:mm";
@@ -746,7 +746,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaDetalle.Cell(fila, 9).Value = d.DiferenciaBase;
             hojaDetalle.Cell(fila, 10).Value = d.UnidadBase;
             hojaDetalle.Cell(fila, 11).Value = d.ValorDiferenciaEstimado;
-            hojaDetalle.Range(fila, 7, fila, 11).Style.NumberFormat.Format = "#,##0.00";
+            hojaDetalle.Range(fila, 7, fila, 11).Style.NumberFormat.Format = "#,##0.0000";
             hojaDetalle.Cell(fila, 12).Value = d.MovimientoAjusteId?.ToString() ?? "";
             hojaDetalle.Cell(fila, 13).Value = d.Observaciones ?? "";
             fila++;
@@ -796,19 +796,19 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Valor diferencias").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{valorTotal:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{valorTotal:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(8);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Faltantes").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{valorFaltantes:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{valorFaltantes:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(8);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Sobrantes").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{valorSobrantes:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{valorSobrantes:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(8);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
@@ -844,7 +844,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Hotel);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Estado);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(c.Detalles.Count(d => d.DiferenciaBase != 0).ToString());
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.Detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado)):N2}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.Detalles.Sum(d => Math.Abs(d.ValorDiferenciaEstimado)):N4}");
                         }
                     });
 
@@ -871,10 +871,10 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         {
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Producto);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Hotel);
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{d.CantidadSistemaBase:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{d.CantidadFisicaBase:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{d.DiferenciaBase:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{Math.Abs(d.ValorDiferenciaEstimado):N2}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{d.CantidadSistemaBase:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{d.CantidadFisicaBase:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{d.DiferenciaBase:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{Math.Abs(d.ValorDiferenciaEstimado):N4}");
                         }
                     });
                 });
@@ -926,7 +926,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaResumen.Cell(i + 4, 1).Value = resumen[i].Etiqueta;
             hojaResumen.Cell(i + 4, 1).Style.Font.SetBold();
             hojaResumen.Cell(i + 4, 2).Value = resumen[i].Valor;
-            hojaResumen.Cell(i + 4, 2).Style.NumberFormat.Format = "#,##0.00";
+            hojaResumen.Cell(i + 4, 2).Style.NumberFormat.Format = "#,##0.0000";
         }
 
         var hojaCierres = libro.Worksheets.Add("Cierres");
@@ -965,7 +965,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaCierres.Cell(fila, 20).Value = c.DocumentosVencidos;
             hojaCierres.Cell(fila, 21).Value = c.CreadoPor ?? "";
             hojaCierres.Cell(fila, 22).Value = c.Observaciones ?? "";
-            hojaCierres.Range(fila, 7, fila, 19).Style.NumberFormat.Format = "#,##0.00";
+            hojaCierres.Range(fila, 7, fila, 19).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -996,7 +996,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaHoteles.Cell(fila, 11).Value = grupo.Sum(c => c.SaldoCuentasPorPagar);
             hojaHoteles.Cell(fila, 12).Value = grupo.Sum(c => c.SaldoCuentasVencido);
             hojaHoteles.Cell(fila, 13).Value = grupo.Sum(c => c.DocumentosVencidos);
-            hojaHoteles.Range(fila, 3, fila, 12).Style.NumberFormat.Format = "#,##0.00";
+            hojaHoteles.Range(fila, 3, fila, 12).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
 
@@ -1039,25 +1039,25 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Compras").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{compras:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{compras:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(8);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Inventario").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{inventario:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{inventario:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(8);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("CXP vencido").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{cxpVencido:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{cxpVencido:N4}").FontSize(13).Bold();
                         });
                         row.ConstantItem(8);
                         row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(c =>
                         {
                             c.Item().Text("Mermas + ajustes").FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Q{mermasAjustes:N2}").FontSize(13).Bold();
+                            c.Item().Text($"Q{mermasAjustes:N4}").FontSize(13).Bold();
                         });
                     });
 
@@ -1086,9 +1086,9 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Hotel);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(c.Anio.ToString());
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(c.Mes.ToString());
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.ComprasTotal:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.ValorInventarioEstimado:N2}");
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.SaldoCuentasVencido:N2}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.ComprasTotal:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.ValorInventarioEstimado:N4}");
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{c.SaldoCuentasVencido:N4}");
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text(c.ProductosEnRiesgo.ToString());
                         }
                     });
@@ -1216,8 +1216,8 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 d.CantidadBase,
                 0m,
                 0m,
-                d.FactorABase == 0 ? null : Math.Round(d.PrecioPorUnidadBase, 2),
-                Math.Round(d.Total, 2),
+                d.FactorABase == 0 ? null : Math.Round(d.PrecioPorUnidadBase, 4),
+                Math.Round(d.Total, 4),
                 d.DocumentoCompra.NumeroDocumento,
                 d.DocumentoCompra.Proveedor.Nombre,
                 d.DocumentoCompra.CreadoPor))
@@ -1261,10 +1261,10 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 linea.Fecha,
                 linea.Tipo,
                 linea.Referencia,
-                Math.Round(linea.Entrada, 2),
-                Math.Round(linea.Salida, 2),
-                Math.Round(linea.Ajuste, 2),
-                Math.Round(saldo, 2),
+                Math.Round(linea.Entrada, 4),
+                Math.Round(linea.Salida, 4),
+                Math.Round(linea.Ajuste, 4),
+                Math.Round(saldo, 4),
                 linea.CostoUnitario,
                 linea.CostoTotal,
                 linea.Documento,
@@ -1278,11 +1278,11 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             producto.UnidadBase.Nombre,
             filtro.Desde,
             filtro.Hasta,
-            Math.Round(saldoInicial, 2),
-            Math.Round(movimientosPeriodo.Sum(m => m.Entrada), 2),
-            Math.Round(movimientosPeriodo.Sum(m => m.Salida), 2),
-            Math.Round(movimientosPeriodo.Sum(m => m.Ajuste), 2),
-            Math.Round(saldo, 2),
+            Math.Round(saldoInicial, 4),
+            Math.Round(movimientosPeriodo.Sum(m => m.Entrada), 4),
+            Math.Round(movimientosPeriodo.Sum(m => m.Salida), 4),
+            Math.Round(movimientosPeriodo.Sum(m => m.Ajuste), 4),
+            Math.Round(saldo, 4),
             movimientosPeriodo);
     }
 
@@ -1390,10 +1390,10 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                     d.Producto.Nombre,
                     d.Producto.Categoria.ToString(),
                     d.Producto.UnidadBase.Nombre,
-                    Math.Round(d.CantidadSistemaBase, 2),
-                    Math.Round(d.CantidadFisicaBase, 2),
-                    Math.Round(d.DiferenciaBase, 2),
-                    Math.Round(d.ValorDiferenciaEstimado, 2),
+                    Math.Round(d.CantidadSistemaBase, 4),
+                    Math.Round(d.CantidadFisicaBase, 4),
+                    Math.Round(d.DiferenciaBase, 4),
+                    Math.Round(d.ValorDiferenciaEstimado, 4),
                     d.MovimientoAjusteId))
                 .ToList()))
             .ToList();
@@ -1447,19 +1447,19 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             c.Anio,
             c.Mes,
             c.Estado.ToString(),
-            Math.Round(c.ComprasTotal, 2),
+            Math.Round(c.ComprasTotal, 4),
             c.DocumentosCompra,
-            Math.Round(c.ValorInventarioEstimado, 2),
+            Math.Round(c.ValorInventarioEstimado, 4),
             c.ProductosEnRiesgo,
-            Math.Round(c.ValorFaltanteEstimado, 2),
-            Math.Round(c.ValorMermasEstimado, 2),
+            Math.Round(c.ValorFaltanteEstimado, 4),
+            Math.Round(c.ValorMermasEstimado, 4),
             c.MovimientosMerma,
-            Math.Round(c.ValorAjustesEstimado, 2),
+            Math.Round(c.ValorAjustesEstimado, 4),
             c.MovimientosAjuste,
             c.ConteosFisicos,
-            Math.Round(c.ValorDiferenciasConteo, 2),
-            Math.Round(c.SaldoCuentasPorPagar, 2),
-            Math.Round(c.SaldoCuentasVencido, 2),
+            Math.Round(c.ValorDiferenciasConteo, 4),
+            Math.Round(c.SaldoCuentasPorPagar, 4),
+            Math.Round(c.SaldoCuentasVencido, 4),
             c.DocumentosVencidos,
             c.FechaCierre,
             c.Observaciones,
@@ -1501,17 +1501,17 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             d.Hotel.Nombre,
             d.Proveedor.Nombre,
             EstadoCuenta(saldo, pagado, fechaVencimiento, hoy),
-            Math.Round(bruto, 2),
-            Math.Round(d.Retencion, 2),
-            Math.Round(neto, 2),
-            Math.Round(pagado, 2),
-            Math.Round(saldo, 2),
+            Math.Round(bruto, 4),
+            Math.Round(d.Retencion, 4),
+            Math.Round(neto, 4),
+            Math.Round(pagado, 4),
+            Math.Round(saldo, 4),
             d.Pagos.OrderByDescending(p => p.Fecha).ThenByDescending(p => p.Id).Select(MapearPagoReporte).ToList());
     }
 
     private static PagoProveedorReporte MapearPagoReporte(PagoProveedor p) => new(
         p.Fecha,
-        Math.Round(p.Monto, 2),
+        Math.Round(p.Monto, 4),
         p.MetodoPago,
         p.Referencia,
         p.Observaciones,

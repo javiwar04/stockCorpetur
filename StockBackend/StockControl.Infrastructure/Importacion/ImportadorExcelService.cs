@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Application.Importacion;
 using StockControl.Domain.Entities;
@@ -123,12 +124,23 @@ public class ImportadorExcelService(IApplicationDbContext db) : IImportadorExcel
 
                     var producto = ObtenerOCrearProducto(productos, nombreProducto, categoria, unidadBase.Id, ref productosCreados);
 
+                    try
+                    {
+                        DecimalPrecision.ValidarEscalaOperativa(cantidad, "La cantidad");
+                        DecimalPrecision.ValidarEscalaOperativa(precio, "El precio unitario");
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        advertencias.Add($"'{nombreHoja}' doc {numeroDoc}, producto {nombreProducto}: {ex.Message}");
+                        continue;
+                    }
+
                     documento.Detalles.Add(new DetalleCompra
                     {
                         Producto = producto,
                         UnidadId = unidadBase.Id,
                         Cantidad = cantidad,
-                        PrecioUnitario = Math.Round(precio, 4),
+                        PrecioUnitario = precio,
                         FactorABase = 1m,
                     });
                 }

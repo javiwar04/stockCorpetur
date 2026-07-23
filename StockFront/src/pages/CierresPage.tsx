@@ -11,7 +11,7 @@ import {
   type CierreMensual,
 } from '../features/cierres/cierresApi';
 
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 const MESES = [
   'Enero',

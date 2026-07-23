@@ -11,7 +11,7 @@ import {
 } from '../features/recetas/recetasApi';
 import { listarProductos } from '../features/catalogos/catalogosApi';
 
-const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
 /** Semáforo de food cost: ≤30% sano, 30-40% atención, >40% problema. */
 function BadgeFoodCost({ porcentaje }: { porcentaje: number | null }) {
@@ -113,7 +113,7 @@ function FilaIngredientes({ plato }: { plato: Plato }) {
         </select>
         <input
           type="number"
-          step="0.001"
+          step="0.0001"
           min="0"
           placeholder="cantidad"
           value={cantidad}

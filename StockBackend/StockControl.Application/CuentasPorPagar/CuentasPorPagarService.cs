@@ -56,16 +56,16 @@ public class CuentasPorPagarService(
 
         var pendientes = cuentas.Where(c => c.Saldo > 0).ToList();
         var resumen = new ResumenCuentasPorPagarDto(
-            Math.Round(cuentas.Sum(c => c.NetoAPagar), 2),
-            Math.Round(cuentas.Sum(c => c.Pagado), 2),
-            Math.Round(cuentas.Sum(c => c.Saldo), 2),
-            Math.Round(cuentas.Where(c => c.Estado == "Vencido").Sum(c => c.Saldo), 2),
+            Math.Round(cuentas.Sum(c => c.NetoAPagar), 4),
+            Math.Round(cuentas.Sum(c => c.Pagado), 4),
+            Math.Round(cuentas.Sum(c => c.Saldo), 4),
+            Math.Round(cuentas.Where(c => c.Estado == "Vencido").Sum(c => c.Saldo), 4),
             cuentas.Count(c => c.Saldo > 0),
             cuentas.Count(c => c.Estado == "Vencido"),
-            Math.Round(pendientes.Where(c => c.FechaVencimiento >= hoy).Sum(c => c.Saldo), 2),
-            Math.Round(pendientes.Where(c => DiasVencido(c.FechaVencimiento, hoy) is >= 1 and <= 30).Sum(c => c.Saldo), 2),
-            Math.Round(pendientes.Where(c => DiasVencido(c.FechaVencimiento, hoy) is >= 31 and <= 60).Sum(c => c.Saldo), 2),
-            Math.Round(pendientes.Where(c => DiasVencido(c.FechaVencimiento, hoy) >= 61).Sum(c => c.Saldo), 2));
+            Math.Round(pendientes.Where(c => c.FechaVencimiento >= hoy).Sum(c => c.Saldo), 4),
+            Math.Round(pendientes.Where(c => DiasVencido(c.FechaVencimiento, hoy) is >= 1 and <= 30).Sum(c => c.Saldo), 4),
+            Math.Round(pendientes.Where(c => DiasVencido(c.FechaVencimiento, hoy) is >= 31 and <= 60).Sum(c => c.Saldo), 4),
+            Math.Round(pendientes.Where(c => DiasVencido(c.FechaVencimiento, hoy) >= 61).Sum(c => c.Saldo), 4));
 
         return new CuentasPorPagarResultadoDto(resumen, cuentas);
     }
@@ -115,7 +115,7 @@ public class CuentasPorPagarService(
             "PagoProveedor",
             pago.Id,
             documento.HotelId,
-            $"Pago de Q{pago.Monto:N2} registrado a {documento.Proveedor.Nombre}",
+            $"Pago de Q{pago.Monto:N4} registrado a {documento.Proveedor.Nombre}",
             $"Documento {documento.NumeroDocumento}; fecha {pago.Fecha:dd/MM/yyyy}; metodo {pago.MetodoPago}",
             ct);
 
@@ -146,7 +146,7 @@ public class CuentasPorPagarService(
             "PagoProveedor",
             id,
             hotelId,
-            $"Pago de Q{monto:N2} eliminado",
+            $"Pago de Q{monto:N4} eliminado",
             $"DocumentoId {documentoId}; fecha {fecha:dd/MM/yyyy}",
             ct);
         return true;
@@ -171,11 +171,11 @@ public class CuentasPorPagarService(
             d.ProveedorId,
             d.Proveedor.Nombre,
             d.Proveedor.DiasCredito,
-            Math.Round(bruto, 2),
-            Math.Round(d.Retencion, 2),
-            Math.Round(neto, 2),
-            Math.Round(pagado, 2),
-            Math.Round(saldo, 2),
+            Math.Round(bruto, 4),
+            Math.Round(d.Retencion, 4),
+            Math.Round(neto, 4),
+            Math.Round(pagado, 4),
+            Math.Round(saldo, 4),
             estado,
             d.Pagos.OrderByDescending(p => p.Fecha).ThenByDescending(p => p.Id).Select(MapearPago).ToList());
     }
@@ -186,7 +186,7 @@ public class CuentasPorPagarService(
         p.ProveedorId,
         p.Proveedor.Nombre,
         p.Fecha,
-        Math.Round(p.Monto, 2),
+        Math.Round(p.Monto, 4),
         p.MetodoPago,
         p.Referencia,
         p.Observaciones,

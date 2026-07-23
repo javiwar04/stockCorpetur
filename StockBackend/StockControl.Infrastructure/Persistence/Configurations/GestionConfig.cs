@@ -85,7 +85,7 @@ public class ConteoInventarioDetalleConfig : IEntityTypeConfiguration<ConteoInve
         b.Property(x => x.CantidadSistemaBase).HasPrecision(18, 4);
         b.Property(x => x.CantidadFisicaBase).HasPrecision(18, 4);
         b.Property(x => x.DiferenciaBase).HasPrecision(18, 4);
-        b.Property(x => x.ValorDiferenciaEstimado).HasPrecision(18, 2);
+        b.Property(x => x.ValorDiferenciaEstimado).HasPrecision(18, 4);
         b.HasIndex(x => new { x.ConteoInventarioId, x.ProductoId }).IsUnique();
         b.HasIndex(x => x.MovimientoAjusteId);
 
@@ -113,14 +113,14 @@ public class CierreMensualConfig : IEntityTypeConfiguration<CierreMensual>
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).IsRequired();
         b.Property(x => x.Observaciones).HasMaxLength(500);
 
-        b.Property(x => x.ComprasTotal).HasPrecision(18, 2);
-        b.Property(x => x.ValorInventarioEstimado).HasPrecision(18, 2);
-        b.Property(x => x.ValorFaltanteEstimado).HasPrecision(18, 2);
-        b.Property(x => x.ValorMermasEstimado).HasPrecision(18, 2);
-        b.Property(x => x.ValorAjustesEstimado).HasPrecision(18, 2);
-        b.Property(x => x.ValorDiferenciasConteo).HasPrecision(18, 2);
-        b.Property(x => x.SaldoCuentasPorPagar).HasPrecision(18, 2);
-        b.Property(x => x.SaldoCuentasVencido).HasPrecision(18, 2);
+        b.Property(x => x.ComprasTotal).HasPrecision(18, 4);
+        b.Property(x => x.ValorInventarioEstimado).HasPrecision(18, 4);
+        b.Property(x => x.ValorFaltanteEstimado).HasPrecision(18, 4);
+        b.Property(x => x.ValorMermasEstimado).HasPrecision(18, 4);
+        b.Property(x => x.ValorAjustesEstimado).HasPrecision(18, 4);
+        b.Property(x => x.ValorDiferenciasConteo).HasPrecision(18, 4);
+        b.Property(x => x.SaldoCuentasPorPagar).HasPrecision(18, 4);
+        b.Property(x => x.SaldoCuentasVencido).HasPrecision(18, 4);
 
         b.HasIndex(x => new { x.HotelId, x.Anio, x.Mes })
             .IsUnique()

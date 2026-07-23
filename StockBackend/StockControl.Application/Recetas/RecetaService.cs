@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
@@ -73,6 +74,8 @@ public class RecetaService(IApplicationDbContext db) : IRecetaService
     {
         if (req.CantidadPorPorcion <= 0)
             throw new InvalidOperationException("La cantidad por porción debe ser mayor a cero.");
+
+        DecimalPrecision.ValidarEscalaOperativa(req.CantidadPorPorcion, "La cantidad por porcion");
 
         var plato = await db.Platos.FirstOrDefaultAsync(p => p.Id == platoId, ct);
         if (plato is null) return null;
@@ -188,15 +191,15 @@ public class RecetaService(IApplicationDbContext db) : IRecetaService
                     i.Id, i.ProductoId, i.Producto.Nombre, i.Producto.UnidadBase.Nombre,
                     i.CantidadPorPorcion,
                     Math.Round(precio, 4),
-                    Math.Round(i.CantidadPorPorcion * precio, 2),
+                    Math.Round(i.CantidadPorPorcion * precio, 4),
                     tienePrecio);
             })
             .ToList();
 
-        var costo = Math.Round(ingredientes.Sum(i => i.CostoLinea), 2);
+        var costo = Math.Round(ingredientes.Sum(i => i.CostoLinea), 4);
         var costoCompleto = ingredientes.All(i => i.TienePrecio);
 
-        decimal? margen = plato.PrecioVenta is { } pv ? Math.Round(pv - costo, 2) : null;
+        decimal? margen = plato.PrecioVenta is { } pv ? Math.Round(pv - costo, 4) : null;
         decimal? foodCost = plato.PrecioVenta is > 0 ? Math.Round(costo / plato.PrecioVenta.Value * 100, 1) : null;
 
         return new PlatoDto(

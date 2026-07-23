@@ -110,7 +110,7 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
             if (actual >= stockMinimo && actual >= 0) continue;
 
             var faltante = stockMinimo > actual ? stockMinimo - actual : Math.Abs(actual);
-            var valor = Math.Round(faltante * precios.GetValueOrDefault(llave.ProductoId), 2);
+            var valor = Math.Round(faltante * precios.GetValueOrDefault(llave.ProductoId), 4);
             var severidad = actual < 0
                 ? "Critica"
                 : stockMinimo > 0 && faltante >= stockMinimo * 0.5m
@@ -122,7 +122,7 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
                 "StockCritico",
                 severidad,
                 $"{producto.Nombre} bajo minimo",
-                $"Existencia {Math.Round(actual, 2)} {producto.UnidadBase}; minimo {Math.Round(stockMinimo, 2)}.",
+                $"Existencia {Math.Round(actual, 4)} {producto.UnidadBase}; minimo {Math.Round(stockMinimo, 4)}.",
                 llave.HotelId,
                 hotelNombres.GetValueOrDefault(llave.HotelId),
                 "Producto",
@@ -166,12 +166,12 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
                 "CuentaVencida",
                 severidad,
                 $"Factura {doc.NumeroDocumento} vencida",
-                $"{doc.Proveedor.Nombre} tiene saldo pendiente de Q{saldo:N2} con {dias} dias vencidos.",
+                $"{doc.Proveedor.Nombre} tiene saldo pendiente de Q{saldo:N4} con {dias} dias vencidos.",
                 doc.HotelId,
                 doc.Hotel.Nombre,
                 "DocumentoCompra",
                 doc.Id,
-                Math.Round(saldo, 2),
+                Math.Round(saldo, 4),
                 vencimiento,
                 "Registrar pago o coordinar liquidacion con proveedor."));
         }
@@ -203,12 +203,12 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
                 "ConteoDiferencia",
                 c.Valor >= 1000 ? "Critica" : c.Valor >= 500 ? "Alta" : "Media",
                 $"Conteo #{c.Conteo.Id} con diferencias fuertes",
-                $"{c.Diferencias} productos con diferencias por Q{c.Valor:N2}.",
+                $"{c.Diferencias} productos con diferencias por Q{c.Valor:N4}.",
                 c.Conteo.HotelId,
                 c.Conteo.Hotel.Nombre,
                 "ConteoInventario",
                 c.Conteo.Id,
-                Math.Round(c.Valor, 2),
+                Math.Round(c.Valor, 4),
                 c.Conteo.Fecha,
                 c.Conteo.Estado == EstadoConteoInventario.Registrado ? "Revisar y aplicar ajustes si procede." : "Revisar diferencias ajustadas."))
             .ToList();
