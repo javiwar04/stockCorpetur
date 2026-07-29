@@ -12,5 +12,13 @@ public static class RolesApp
     /// <summary>Registra documentos de compra, limitado a su(s) hotel(es).</summary>
     public const string Digitador = "Digitador";
 
-    public static readonly string[] Todos = { Admin, Gerencia, Digitador };
+    /// <summary>Consulta datos de sus hoteles asignados sin permisos de escritura.</summary>
+    public const string SoloLectura = "SoloLectura";
+
+    public const string EscrituraOperativa = Admin + "," + Gerencia + "," + Digitador;
+
+    public static readonly string[] Todos = { Admin, Gerencia, Digitador, SoloLectura };
+
+    public static bool UsaRestriccionHoteles(string rol) =>
+        rol is Digitador or SoloLectura;
 }

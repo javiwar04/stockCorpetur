@@ -19,8 +19,8 @@ public class InventarioController(IInventarioService service) : ControllerBase
         await service.ListarStockMinimoAsync(hotelId);
 
     [HttpGet("alertas-stock")]
-    public async Task<ActionResult<List<AlertaStockDto>>> AlertasStock() =>
-        await service.AlertasStockAsync();
+    public async Task<ActionResult<List<AlertaStockDto>>> AlertasStock([FromQuery] int? hotelId) =>
+        await service.AlertasStockAsync(hotelId);
 
     [HttpGet("sugerencias-compra/{hotelId:int}")]
     public async Task<ActionResult<List<SugerenciaCompraDto>>> SugerenciasCompra(int hotelId) =>
@@ -51,6 +51,7 @@ public class InventarioController(IInventarioService service) : ControllerBase
         await service.ListarMovimientosAsync(new FiltroMovimientos(hotelId, productoId, desde, hasta));
 
     [HttpPost("movimientos")]
+    [Authorize(Roles = RolesApp.EscrituraOperativa)]
     public async Task<ActionResult<MovimientoDto>> Registrar(CrearMovimientoRequest req) =>
         await service.RegistrarMovimientoAsync(req);
 

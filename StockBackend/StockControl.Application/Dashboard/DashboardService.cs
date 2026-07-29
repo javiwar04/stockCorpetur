@@ -12,21 +12,21 @@ namespace StockControl.Application.Dashboard;
 /// </summary>
 public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser) : IDashboardService
 {
-    public async Task<ResumenMensualDto> ResumenMensualAsync(int anio, int mes, CancellationToken ct = default)
+    public async Task<ResumenMensualDto> ResumenMensualAsync(int anio, int mes, int? hotelId = null, CancellationToken ct = default)
     {
         var inicio = new DateOnly(anio, mes, 1);
         var fin = inicio.AddMonths(1);
         var inicioAnterior = inicio.AddMonths(-1);
 
-        var delMes = Detalles().Where(d => d.DocumentoCompra.Fecha >= inicio && d.DocumentoCompra.Fecha < fin);
+        var delMes = Detalles(hotelId).Where(d => d.DocumentoCompra.Fecha >= inicio && d.DocumentoCompra.Fecha < fin);
 
         var gastoTotal = await delMes.SumAsync(d => (decimal?)(d.Cantidad * d.PrecioUnitario), ct) ?? 0m;
 
-        var gastoAnterior = await Detalles()
+        var gastoAnterior = await Detalles(hotelId)
             .Where(d => d.DocumentoCompra.Fecha >= inicioAnterior && d.DocumentoCompra.Fecha < inicio)
             .SumAsync(d => (decimal?)(d.Cantidad * d.PrecioUnitario), ct) ?? 0m;
 
-        var documentos = await Documentos()
+        var documentos = await Documentos(hotelId)
             .CountAsync(d => d.Fecha >= inicio && d.Fecha < fin, ct);
 
         var porHotelRaw = await delMes
@@ -72,22 +72,22 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             porCategoria.Select(x => new GastoPorCategoriaDto(x.Key.ToString(), x.Gasto)).ToList());
     }
 
-    public async Task<List<TopProductoDto>> TopCompradosAsync(int meses, int top, CancellationToken ct = default)
+    public async Task<List<TopProductoDto>> TopCompradosAsync(int meses, int top, int? hotelId = null, CancellationToken ct = default)
     {
-        var agregado = await AgregadoPorProducto(meses).OrderByDescending(x => x.CantidadBase).Take(top).ToListAsync(ct);
+        var agregado = await AgregadoPorProducto(meses, hotelId).OrderByDescending(x => x.CantidadBase).Take(top).ToListAsync(ct);
         return agregado.Select(MapearTop).ToList();
     }
 
-    public async Task<List<TopProductoDto>> TopCarosAsync(int meses, int top, CancellationToken ct = default)
+    public async Task<List<TopProductoDto>> TopCarosAsync(int meses, int top, int? hotelId = null, CancellationToken ct = default)
     {
-        var agregado = await AgregadoPorProducto(meses)
+        var agregado = await AgregadoPorProducto(meses, hotelId)
             .OrderByDescending(x => x.Gasto / x.CantidadBase)
             .Take(top)
             .ToListAsync(ct);
         return agregado.Select(MapearTop).ToList();
     }
 
-    public async Task<TendenciaPrecioDto?> TendenciaPrecioAsync(int productoId, int meses, CancellationToken ct = default)
+    public async Task<TendenciaPrecioDto?> TendenciaPrecioAsync(int productoId, int meses, int? hotelId = null, CancellationToken ct = default)
     {
         var producto = await db.Productos.Include(p => p.UnidadBase)
             .FirstOrDefaultAsync(p => p.Id == productoId, ct);
@@ -95,7 +95,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
         var desde = MesesAtras(meses);
 
-        var puntos = await Detalles()
+        var puntos = await Detalles(hotelId)
             .Where(d => d.ProductoId == productoId && d.DocumentoCompra.Fecha >= desde)
             .GroupBy(d => new { d.DocumentoCompra.Fecha.Year, d.DocumentoCompra.Fecha.Month })
             .Select(g => new
@@ -115,11 +115,11 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
         return new TendenciaPrecioDto(producto.Id, producto.Nombre, producto.UnidadBase.Nombre, serie);
     }
 
-    public async Task<List<ConsumoHotelSerieDto>> ConsumoPorHotelAsync(int meses, CancellationToken ct = default)
+    public async Task<List<ConsumoHotelSerieDto>> ConsumoPorHotelAsync(int meses, int? hotelId = null, CancellationToken ct = default)
     {
         var desde = MesesAtras(meses);
 
-        var filas = await Detalles()
+        var filas = await Detalles(hotelId)
             .Where(d => d.DocumentoCompra.Fecha >= desde)
             .GroupBy(d => new
             {
@@ -149,14 +149,14 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             .ToList();
     }
 
-    public async Task<List<AlertaPrecioDto>> AlertasPrecioAsync(decimal umbralPorcentaje, CancellationToken ct = default)
+    public async Task<List<AlertaPrecioDto>> AlertasPrecioAsync(decimal umbralPorcentaje, int? hotelId = null, CancellationToken ct = default)
     {
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
         var inicioReciente = hoy.AddDays(-30);
         var inicioReferencia = inicioReciente.AddDays(-90);
 
         // Precio ponderado reciente (últimos 30 días) por producto.
-        var recientes = await Detalles()
+        var recientes = await Detalles(hotelId)
             .Where(d => d.DocumentoCompra.Fecha >= inicioReciente)
             .GroupBy(d => new { d.ProductoId, Producto = d.Producto.Nombre, Unidad = d.Producto.UnidadBase.Nombre })
             .Select(g => new
@@ -173,7 +173,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
         // Referencia: media móvil de los 90 días anteriores a la ventana reciente.
         var ids = recientes.Select(r => r.ProductoId).ToList();
-        var referencias = await Detalles()
+        var referencias = await Detalles(hotelId)
             .Where(d => ids.Contains(d.ProductoId)
                         && d.DocumentoCompra.Fecha >= inicioReferencia
                         && d.DocumentoCompra.Fecha < inicioReciente)
@@ -201,13 +201,13 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
         return alertas.OrderByDescending(a => a.IncrementoPorcentaje).ToList();
     }
 
-    public async Task<DashboardGerencialDto> GerencialAsync(int anio, int mes, CancellationToken ct = default)
+    public async Task<DashboardGerencialDto> GerencialAsync(int anio, int mes, int? hotelId = null, CancellationToken ct = default)
     {
         var inicio = new DateOnly(anio, mes, 1);
         var fin = inicio.AddMonths(1);
         var corte = fin.AddDays(-1);
 
-        var hoteles = await HotelesPermitidos()
+        var hoteles = await HotelesPermitidos(hotelId)
             .Select(h => new { h.Id, h.Nombre })
             .ToListAsync(ct);
         var hotelIds = hoteles.Select(h => h.Id).ToHashSet();
@@ -440,26 +440,50 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
     // --- Auxiliares ---
 
-    private IQueryable<DetalleCompra> Detalles()
+    private IQueryable<DetalleCompra> Detalles(int? hotelId = null)
     {
         var query = db.Detalles.Where(d => d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido);
+        if (hotelId is not null)
+        {
+            if (!currentUser.PuedeAccederHotel(hotelId.Value))
+                throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
+
+            return query.Where(d => d.DocumentoCompra.HotelId == hotelId.Value);
+        }
+
         if (currentUser.EsAdmin || currentUser.EsGerencia) return query;
         var hoteles = currentUser.HotelesPermitidos;
         return query.Where(d => hoteles.Contains(d.DocumentoCompra.HotelId));
     }
 
-    private IQueryable<DocumentoCompra> Documentos()
+    private IQueryable<DocumentoCompra> Documentos(int? hotelId = null)
     {
         var query = db.Documentos.Where(d => d.Estado == EstadoDocumentoCompra.Recibido);
+        if (hotelId is not null)
+        {
+            if (!currentUser.PuedeAccederHotel(hotelId.Value))
+                throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
+
+            return query.Where(d => d.HotelId == hotelId.Value);
+        }
+
         if (currentUser.EsAdmin || currentUser.EsGerencia) return query;
         var hoteles = currentUser.HotelesPermitidos;
         return query.Where(d => hoteles.Contains(d.HotelId));
     }
 
     /// <summary>Clase con member-init (no record posicional) para que EF Core traduzca la proyección agrupada.</summary>
-    private IQueryable<Hotel> HotelesPermitidos()
+    private IQueryable<Hotel> HotelesPermitidos(int? hotelId = null)
     {
         var query = db.Hoteles.Where(h => h.Activo);
+        if (hotelId is not null)
+        {
+            if (!currentUser.PuedeAccederHotel(hotelId.Value))
+                throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
+
+            return query.Where(h => h.Id == hotelId.Value);
+        }
+
         if (currentUser.EsAdmin || currentUser.EsGerencia) return query;
         var hoteles = currentUser.HotelesPermitidos;
         return query.Where(h => hoteles.Contains(h.Id));
@@ -481,10 +505,10 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
         public decimal Gasto { get; init; }
     }
 
-    private IQueryable<AgregadoProducto> AgregadoPorProducto(int meses)
+    private IQueryable<AgregadoProducto> AgregadoPorProducto(int meses, int? hotelId = null)
     {
         var desde = MesesAtras(meses);
-        return Detalles()
+        return Detalles(hotelId)
             .Where(d => d.DocumentoCompra.Fecha >= desde)
             .GroupBy(d => new
             {

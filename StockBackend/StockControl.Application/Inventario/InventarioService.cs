@@ -18,7 +18,7 @@ public interface IInventarioService
     Task<List<StockMinimoDto>> ListarStockMinimoAsync(int hotelId, CancellationToken ct = default);
     Task<StockMinimoDto> GuardarStockMinimoAsync(GuardarStockMinimoRequest req, CancellationToken ct = default);
     Task<bool> EliminarStockMinimoAsync(int hotelId, int productoId, CancellationToken ct = default);
-    Task<List<AlertaStockDto>> AlertasStockAsync(CancellationToken ct = default);
+    Task<List<AlertaStockDto>> AlertasStockAsync(int? hotelId = null, CancellationToken ct = default);
     Task<List<SugerenciaCompraDto>> SugerenciasCompraAsync(int hotelId, CancellationToken ct = default);
 }
 
@@ -411,10 +411,17 @@ public class InventarioService(
         return true;
     }
 
-    public async Task<List<AlertaStockDto>> AlertasStockAsync(CancellationToken ct = default)
+    public async Task<List<AlertaStockDto>> AlertasStockAsync(int? hotelId = null, CancellationToken ct = default)
     {
         var hotelesQuery = db.Hoteles.Where(h => h.Activo);
-        if (!currentUser.EsAdmin && !currentUser.EsGerencia)
+        if (hotelId is not null)
+        {
+            if (!currentUser.PuedeAccederHotel(hotelId.Value))
+                throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
+
+            hotelesQuery = hotelesQuery.Where(h => h.Id == hotelId.Value);
+        }
+        else if (!currentUser.EsAdmin && !currentUser.EsGerencia)
         {
             var hotelesPermitidos = currentUser.HotelesPermitidos;
             hotelesQuery = hotelesQuery.Where(h => hotelesPermitidos.Contains(h.Id));

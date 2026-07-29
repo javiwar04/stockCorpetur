@@ -72,6 +72,9 @@ public class AuthController(
         if (!RolesApp.Todos.Contains(req.Rol))
             return BadRequest($"Rol inválido. Válidos: {string.Join(", ", RolesApp.Todos)}.");
 
+        if (RolesApp.UsaRestriccionHoteles(req.Rol) && req.Hoteles is not { Count: > 0 })
+            return BadRequest($"El rol {req.Rol} necesita al menos un hotel asignado.");
+
         var user = new ApplicationUser
         {
             UserName = req.Email,
@@ -86,8 +89,8 @@ public class AuthController(
 
         await userManager.AddToRoleAsync(user, req.Rol);
 
-        // Solo los Digitadores se restringen por hotel.
-        if (req.Rol == RolesApp.Digitador && req.Hoteles is { Count: > 0 })
+        // Los roles operativos restringidos se asignan a hoteles concretos.
+        if (RolesApp.UsaRestriccionHoteles(req.Rol) && req.Hoteles is { Count: > 0 })
         {
             foreach (var hotelId in req.Hoteles.Distinct())
                 db.UsuariosHoteles.Add(new UsuarioHotel { UsuarioId = user.Id, HotelId = hotelId });

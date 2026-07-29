@@ -21,7 +21,7 @@ import {
   topCaros,
   topComprados,
 } from '../features/dashboard/dashboardApi';
-import { listarProductos } from '../features/catalogos/catalogosApi';
+import { listarHoteles, listarProductos } from '../features/catalogos/catalogosApi';
 import type { GastoPorCategoria, GastoPorHotel, TopProducto } from '../features/dashboard/types';
 import { listarAlertasStock, type AlertaStock } from '../features/inventario/inventarioApi';
 
@@ -257,43 +257,46 @@ export function DashboardPage() {
   const hoy = new Date();
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mes, setMes] = useState(hoy.getMonth() + 1);
+  const [hotelId, setHotelId] = useState<number | ''>('');
   const [ventanaMeses, setVentanaMeses] = useState(6);
   const [umbralAlertas, setUmbralAlertas] = useState(15);
+  const hotelSeleccionadoId = hotelId === '' ? undefined : hotelId;
+  const { data: hoteles } = useQuery({ queryKey: ['hoteles'], queryFn: () => listarHoteles(true) });
 
   const { data: resumen } = useQuery({
-    queryKey: ['dash-resumen', anio, mes],
-    queryFn: () => obtenerResumen(anio, mes),
+    queryKey: ['dash-resumen', anio, mes, hotelSeleccionadoId],
+    queryFn: () => obtenerResumen(anio, mes, hotelSeleccionadoId),
   });
   const { data: gerencial } = useQuery({
-    queryKey: ['dash-gerencial', anio, mes],
-    queryFn: () => obtenerGerencial(anio, mes),
+    queryKey: ['dash-gerencial', anio, mes, hotelSeleccionadoId],
+    queryFn: () => obtenerGerencial(anio, mes, hotelSeleccionadoId),
   });
   const { data: comprados } = useQuery({
-    queryKey: ['dash-top-comprados', ventanaMeses],
-    queryFn: () => topComprados(ventanaMeses),
+    queryKey: ['dash-top-comprados', ventanaMeses, hotelSeleccionadoId],
+    queryFn: () => topComprados(ventanaMeses, 10, hotelSeleccionadoId),
   });
   const { data: caros } = useQuery({
-    queryKey: ['dash-top-caros', ventanaMeses],
-    queryFn: () => topCaros(ventanaMeses),
+    queryKey: ['dash-top-caros', ventanaMeses, hotelSeleccionadoId],
+    queryFn: () => topCaros(ventanaMeses, 10, hotelSeleccionadoId),
   });
   const { data: consumo } = useQuery({
-    queryKey: ['dash-consumo', ventanaMeses],
-    queryFn: () => consumoHoteles(ventanaMeses),
+    queryKey: ['dash-consumo', ventanaMeses, hotelSeleccionadoId],
+    queryFn: () => consumoHoteles(ventanaMeses, hotelSeleccionadoId),
   });
   const { data: alertas } = useQuery({
-    queryKey: ['dash-alertas', umbralAlertas],
-    queryFn: () => alertasPrecio(umbralAlertas),
+    queryKey: ['dash-alertas', umbralAlertas, hotelSeleccionadoId],
+    queryFn: () => alertasPrecio(umbralAlertas, hotelSeleccionadoId),
   });
   const { data: alertasStock } = useQuery({
-    queryKey: ['inventario-alertas-stock'],
-    queryFn: listarAlertasStock,
+    queryKey: ['inventario-alertas-stock', hotelSeleccionadoId],
+    queryFn: () => listarAlertasStock(hotelSeleccionadoId),
   });
   const { data: productos } = useQuery({ queryKey: ['productos'], queryFn: () => listarProductos(true) });
 
   const [productoTendencia, setProductoTendencia] = useState<number | ''>('');
   const { data: tendencia } = useQuery({
-    queryKey: ['dash-tendencia', productoTendencia],
-    queryFn: () => tendenciaPrecio(Number(productoTendencia)),
+    queryKey: ['dash-tendencia', productoTendencia, hotelSeleccionadoId],
+    queryFn: () => tendenciaPrecio(Number(productoTendencia), 12, hotelSeleccionadoId),
     enabled: productoTendencia !== '',
   });
 
@@ -342,6 +345,18 @@ export function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+              <select
+                value={hotelId}
+                onChange={(e) => setHotelId(e.target.value === '' ? '' : Number(e.target.value))}
+                className="field col-span-2 bg-white sm:w-56"
+              >
+                <option value="">Todos los establecimientos</option>
+                {hoteles?.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.nombre}
+                  </option>
+                ))}
+              </select>
               <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="field bg-white">
                 {MESES_LARGOS.map((m, i) => (
                   <option key={m} value={i + 1}>

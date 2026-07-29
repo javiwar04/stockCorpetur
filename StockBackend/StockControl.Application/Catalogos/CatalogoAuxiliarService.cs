@@ -4,7 +4,7 @@ using StockControl.Domain.Entities;
 
 namespace StockControl.Application.Catalogos;
 
-public class CatalogoAuxiliarService(IApplicationDbContext db) : ICatalogoAuxiliarService
+public class CatalogoAuxiliarService(IApplicationDbContext db, ICurrentUser currentUser) : ICatalogoAuxiliarService
 {
     public async Task<List<UnidadDto>> ListarUnidadesAsync(CancellationToken ct = default) =>
         await db.Unidades.OrderBy(u => u.Nombre)
@@ -23,6 +23,11 @@ public class CatalogoAuxiliarService(IApplicationDbContext db) : ICatalogoAuxili
     {
         var query = db.Hoteles.AsQueryable();
         if (soloActivos) query = query.Where(h => h.Activo);
+        if (!currentUser.EsAdmin && !currentUser.EsGerencia)
+        {
+            var hoteles = currentUser.HotelesPermitidos;
+            query = query.Where(h => hoteles.Contains(h.Id));
+        }
         return await query.OrderBy(h => h.Nombre)
             .Select(h => new HotelDto(h.Id, h.Nombre, h.Activo))
             .ToListAsync(ct);

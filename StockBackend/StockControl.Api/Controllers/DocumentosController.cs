@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockControl.Application.Compras;
+using StockControl.Domain.Common;
 
 namespace StockControl.Api.Controllers;
 
@@ -26,6 +27,7 @@ public class DocumentosController(IDocumentoCompraService service) : ControllerB
     }
 
     [HttpPost]
+    [Authorize(Roles = RolesApp.EscrituraOperativa)]
     public async Task<ActionResult<DocumentoCompraDto>> Crear(CrearDocumentoCompraRequest req)
     {
         var documento = await service.CrearAsync(req);
@@ -34,6 +36,7 @@ public class DocumentosController(IDocumentoCompraService service) : ControllerB
 
     /// <summary>Reemplaza encabezado y líneas del documento (corrección de errores de digitación).</summary>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = RolesApp.EscrituraOperativa)]
     public async Task<ActionResult<DocumentoCompraDto>> Actualizar(int id, CrearDocumentoCompraRequest req)
     {
         var documento = await service.ActualizarAsync(id, req);
@@ -41,6 +44,7 @@ public class DocumentosController(IDocumentoCompraService service) : ControllerB
     }
 
     [HttpPatch("{id:int}/recibir")]
+    [Authorize(Roles = RolesApp.EscrituraOperativa)]
     public async Task<ActionResult<DocumentoCompraDto>> Recibir(int id)
     {
         var documento = await service.RecibirAsync(id);

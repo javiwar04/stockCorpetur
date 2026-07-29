@@ -86,6 +86,7 @@ export function InventarioPage() {
   const navigate = useNavigate();
   const { usuario, tieneRol } = useAuth();
   const esAdminOGerencia = tieneRol('Admin', 'Gerencia');
+  const puedeEscribir = tieneRol('Admin', 'Gerencia', 'Digitador');
 
   const { data: hoteles } = useQuery({ queryKey: ['hoteles'], queryFn: () => listarHoteles(true) });
   const { data: productos } = useQuery({ queryKey: ['productos'], queryFn: () => listarProductos(true) });
@@ -350,6 +351,7 @@ export function InventarioPage() {
         <KpiInventario titulo="Mínimos configurados" valor={String(resumen.configurados)} detalle="hotel/producto" />
       </div>
 
+      {puedeEscribir && (
       <form onSubmit={enviar} className="card card-pad">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -436,6 +438,7 @@ export function InventarioPage() {
           </div>
         </div>
       </form>
+      )}
 
       <div className="card overflow-hidden">
         <div className="card-header">
@@ -448,14 +451,16 @@ export function InventarioPage() {
               <div className="text-xs text-slate-500">Costo estimado</div>
               <div className="text-lg font-semibold text-slate-900">{Q(totalSugerido)}</div>
             </div>
-            <button
-              type="button"
-              onClick={crearDocumentoDesdeSugerencia}
-              disabled={!sugerencias?.length}
-              className="btn-primary btn-sm"
-            >
-              Crear documento
-            </button>
+            {puedeEscribir && (
+              <button
+                type="button"
+                onClick={crearDocumentoDesdeSugerencia}
+                disabled={!sugerencias?.length}
+                className="btn-primary btn-sm"
+              >
+                Crear documento
+              </button>
+            )}
           </div>
         </div>
         <div className="overflow-x-auto">

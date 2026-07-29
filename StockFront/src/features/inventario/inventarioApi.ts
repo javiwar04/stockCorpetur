@@ -112,8 +112,8 @@ export interface Kardex {
 export const obtenerExistencias = (hotelId: number) =>
   api.get<Existencia[]>(`/api/inventario/existencias/${hotelId}`).then((r) => r.data);
 
-export const listarAlertasStock = () =>
-  api.get<AlertaStock[]>('/api/inventario/alertas-stock').then((r) => r.data);
+export const listarAlertasStock = (hotelId?: number) =>
+  api.get<AlertaStock[]>('/api/inventario/alertas-stock', { params: { hotelId } }).then((r) => r.data);
 
 export const sugerenciasCompra = (hotelId: number) =>
   api.get<SugerenciaCompra[]>(`/api/inventario/sugerencias-compra/${hotelId}`).then((r) => r.data);

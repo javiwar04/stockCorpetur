@@ -77,6 +77,7 @@ export function DocumentosPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const precargaAplicada = useRef(false);
+  const puedeEscribir = useAuth((s) => s.tieneRol('Admin', 'Gerencia', 'Digitador'));
   const puedeEliminar = useAuth((s) => s.tieneRol('Admin', 'Gerencia'));
 
   const invalidarFlujoCompras = () => {
@@ -253,6 +254,7 @@ export function DocumentosPage() {
 
   useEffect(() => {
     const sugerencia = (location.state as EstadoNavegacionDocumentos | null)?.sugerenciaCompra;
+    if (!puedeEscribir) return;
     if (precargaAplicada.current || !sugerencia || !productos || !proveedores) return;
 
     const lineasPrecargadas = sugerencia.lineas
@@ -308,7 +310,7 @@ export function DocumentosPage() {
     });
 
     navigate('/documentos', { replace: true, state: null });
-  }, [location.state, navigate, productos, proveedores]);
+  }, [location.state, navigate, productos, proveedores, puedeEscribir]);
 
   const actualizarLinea = (idx: number, cambios: Partial<LineaNueva>) => {
     setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...cambios } : l)));
@@ -409,12 +411,14 @@ export function DocumentosPage() {
                 Registra ingresos, controla proveedores y detecta variaciones antes de que lleguen al inventario.
               </p>
             </div>
-            <button onClick={abrirNuevo} className="btn bg-white text-slate-900 shadow-sm hover:bg-emerald-50">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Nuevo documento
-            </button>
+            {puedeEscribir && (
+              <button onClick={abrirNuevo} className="btn bg-white text-slate-900 shadow-sm hover:bg-emerald-50">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Nuevo documento
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -531,7 +535,7 @@ export function DocumentosPage() {
                       {Q(d.total)}
                     </td>
                     <td className="td whitespace-nowrap text-right">
-                      {d.estado !== 'Anulado' && (
+                      {puedeEscribir && d.estado !== 'Anulado' && (
                         <button
                           onClick={() => void editar(d.id)}
                           className="mr-1 rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
@@ -540,7 +544,7 @@ export function DocumentosPage() {
                           Editar
                         </button>
                       )}
-                      {d.estado === 'Borrador' && (
+                      {puedeEscribir && d.estado === 'Borrador' && (
                         <button
                           onClick={() => confirmarRecibir(d.id)}
                           disabled={recibirMutation.isPending}

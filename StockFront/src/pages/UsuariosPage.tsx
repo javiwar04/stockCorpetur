@@ -8,7 +8,8 @@ import {
 import { listarHoteles } from '../features/catalogos/catalogosApi';
 import type { Rol } from '../features/auth/types';
 
-const ROLES: Rol[] = ['Admin', 'Gerencia', 'Digitador'];
+const ROLES: Rol[] = ['Admin', 'Gerencia', 'Digitador', 'SoloLectura'];
+const ROLES_CON_HOTELES: Rol[] = ['Digitador', 'SoloLectura'];
 
 export function UsuariosPage() {
   const qc = useQueryClient();
@@ -48,14 +49,14 @@ export function UsuariosPage() {
 
   const enviar = (e: React.FormEvent) => {
     e.preventDefault();
-    if (rol === 'Digitador' && hotelesSel.length === 0)
-      return setError('Un Digitador necesita al menos un hotel asignado.');
+    if (ROLES_CON_HOTELES.includes(rol) && hotelesSel.length === 0)
+      return setError(`El rol ${rol} necesita al menos un hotel asignado.`);
     crearMutation.mutate({
       nombre,
       email,
       password,
       rol,
-      hoteles: rol === 'Digitador' ? hotelesSel : undefined,
+      hoteles: ROLES_CON_HOTELES.includes(rol) ? hotelesSel : undefined,
     });
   };
 
@@ -108,7 +109,7 @@ export function UsuariosPage() {
             </select>
           </div>
 
-          {rol === 'Digitador' && (
+          {ROLES_CON_HOTELES.includes(rol) && (
             <div>
               <div className="label">Hoteles asignados</div>
               <div className="flex flex-wrap gap-2">
@@ -167,7 +168,7 @@ export function UsuariosPage() {
                     <span className="badge-slate">{u.roles.join(', ')}</span>
                   </td>
                   <td className="td text-slate-500">
-                    {u.roles.includes('Digitador') ? u.hoteles.map(nombreHotel).join(', ') || '—' : 'Todos'}
+                    {u.roles.some((r) => ROLES_CON_HOTELES.includes(r)) ? u.hoteles.map(nombreHotel).join(', ') || '—' : 'Todos'}
                   </td>
                   <td className="td">
                     <span className={u.activo ? 'badge-green' : 'badge-slate'}>{u.activo ? 'Activo' : 'Inactivo'}</span>

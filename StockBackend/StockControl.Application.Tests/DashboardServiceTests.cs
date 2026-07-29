@@ -125,6 +125,34 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task Resumen_FiltroHotel_AcotaMetricasDelAdmin()
+    {
+        using var db = TestDb.Crear();
+        TestDb.AgregarCompra(db, 1, "H1-F", new DateOnly(2026, 5, 10), 100, 5); // Q500
+        TestDb.AgregarCompra(db, 2, "H2-F", new DateOnly(2026, 5, 10), 10, 5);  // Q50
+
+        var service = new DashboardService(db, new CurrentUserFake(esAdmin: true));
+        var resumen = await service.ResumenMensualAsync(2026, 5, hotelId: 2);
+
+        Assert.Equal(50m, resumen.GastoTotal);
+        var hotel = Assert.Single(resumen.PorHotel);
+        Assert.Equal(2, hotel.HotelId);
+    }
+
+    [Fact]
+    public async Task Resumen_FiltroHotelNoPermitido_LanzaUnauthorized()
+    {
+        using var db = TestDb.Crear();
+        TestDb.AgregarCompra(db, 1, "H1-X", new DateOnly(2026, 5, 10), 100, 5);
+        TestDb.AgregarCompra(db, 2, "H2-X", new DateOnly(2026, 5, 10), 10, 5);
+
+        var service = new DashboardService(db, new CurrentUserFake(hoteles: 1));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.ResumenMensualAsync(2026, 5, hotelId: 2));
+    }
+
+    [Fact]
     public async Task Gerencial_CalculaInventarioMermasStockCriticoYCuentas()
     {
         using var db = TestDb.Crear();

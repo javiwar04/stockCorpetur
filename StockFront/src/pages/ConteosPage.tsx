@@ -51,6 +51,7 @@ export function ConteosPage() {
   const qc = useQueryClient();
   const { usuario, tieneRol } = useAuth();
   const esAdminOGerencia = tieneRol('Admin', 'Gerencia');
+  const puedeEscribir = tieneRol('Admin', 'Gerencia', 'Digitador');
 
   const { data: hoteles } = useQuery({ queryKey: ['hoteles'], queryFn: () => listarHoteles(true) });
   const [hotelId, setHotelId] = useState<number | ''>('');
@@ -260,6 +261,7 @@ export function ConteosPage() {
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)]">
+        {puedeEscribir && (
         <form onSubmit={guardarConteo} className="card overflow-hidden">
           <div className="card-header">
             <div>
@@ -381,6 +383,7 @@ export function ConteosPage() {
             </table>
           </div>
         </form>
+        )}
 
         <div className="space-y-6">
           <div className="card overflow-hidden">

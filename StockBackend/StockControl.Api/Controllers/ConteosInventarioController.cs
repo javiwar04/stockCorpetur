@@ -31,6 +31,7 @@ public class ConteosInventarioController(IConteoInventarioService service) : Con
     }
 
     [HttpPost]
+    [Authorize(Roles = RolesApp.EscrituraOperativa)]
     public async Task<ActionResult<ConteoInventarioDto>> Crear(CrearConteoInventarioRequest req)
     {
         var conteo = await service.CrearAsync(req);
