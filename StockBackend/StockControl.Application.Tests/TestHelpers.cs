@@ -59,7 +59,7 @@ public static class TestDb
             ProveedorId = 1,
             Detalles =
             {
-                new DetalleCompra { ProductoId = 1, UnidadId = 1, Cantidad = cantidad, PrecioUnitario = precio, FactorABase = 1m },
+                new DetalleCompra { HotelId = hotelId, ProductoId = 1, UnidadId = 1, Cantidad = cantidad, PrecioUnitario = precio, FactorABase = 1m },
             },
         };
         db.Documentos.Add(doc);

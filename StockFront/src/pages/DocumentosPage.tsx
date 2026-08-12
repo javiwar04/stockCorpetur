@@ -16,8 +16,8 @@ import type { Conversion } from '../features/catalogos/types';
 import { useAuth } from '../features/auth/authStore';
 import type { SugerenciaCompra } from '../features/inventario/inventarioApi';
 
-function lineaVacia(): LineaNueva {
-  return { productoId: '', unidadId: '', cantidad: '', precioUnitario: '' };
+function lineaVacia(hotelId: number | '' = ''): LineaNueva {
+  return { hotelId, productoId: '', unidadId: '', cantidad: '', precioUnitario: '', descuento: '' };
 }
 
 const Q = (n: number) => `Q${n.toLocaleString('es-GT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
@@ -167,7 +167,6 @@ export function DocumentosPage() {
   const [fecha, setFecha] = useState(() => fechaInput(new Date()));
   const [numeroDocumento, setNumeroDocumento] = useState('');
   const [numeroPedido, setNumeroPedido] = useState('');
-  const [hotelId, setHotelId] = useState<number | ''>('');
   const [proveedorId, setProveedorId] = useState<number | ''>('');
   const [estado, setEstado] = useState<EstadoDocumentoCompra>('Recibido');
   const [tipoCompra, setTipoCompra] = useState<TipoCompra>('Ordinaria');
@@ -184,7 +183,6 @@ export function DocumentosPage() {
     setFecha(fechaInput(new Date()));
     setNumeroDocumento('');
     setNumeroPedido('');
-    setHotelId('');
     setProveedorId('');
     setEstado('Recibido');
     setTipoCompra('Ordinaria');
@@ -227,7 +225,6 @@ export function DocumentosPage() {
     setFecha(doc.fecha);
     setNumeroDocumento(doc.numeroDocumento);
     setNumeroPedido(doc.numeroPedido ?? '');
-    setHotelId(doc.hotelId);
     setProveedorId(doc.proveedorId);
     setEstado(doc.estado);
     setTipoCompra(doc.tipoCompra ?? 'Ordinaria');
@@ -237,8 +234,10 @@ export function DocumentosPage() {
       doc.detalles.map((l) => ({
         productoId: l.productoId,
         unidadId: l.unidadId,
+        hotelId: l.hotelId,
         cantidad: String(l.cantidad),
         precioUnitario: String(l.precioUnitario),
+        descuento: String(l.descuento ?? 0),
       })),
     );
     setError(null);
@@ -263,8 +262,10 @@ export function DocumentosPage() {
         return {
           productoId: linea.productoId,
           unidadId: producto?.unidadBaseId ?? '',
+          hotelId: sugerencia.hotelId,
           cantidad: String(linea.cantidadSugeridaBase),
           precioUnitario: linea.ultimoPrecioBase != null ? String(linea.ultimoPrecioBase) : '',
+          descuento: '',
         };
       })
       .filter((linea) => linea.unidadId !== '');
@@ -282,7 +283,6 @@ export function DocumentosPage() {
     setFecha(fechaInput(new Date()));
     setNumeroDocumento('');
     setNumeroPedido('');
-    setHotelId(sugerencia.hotelId);
     setProveedorId(proveedorActivo);
     setEstado('Borrador');
     setTipoCompra('Ordinaria');
@@ -316,6 +316,17 @@ export function DocumentosPage() {
     setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...cambios } : l)));
   };
 
+  const agregarLinea = () => {
+    const hotelSugerido = lineas.find((linea) => linea.hotelId !== '')?.hotelId ?? '';
+    setLineas((prev) => [lineaVacia(hotelSugerido), ...prev]);
+  };
+
+  const manejarEnterLinea = (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    agregarLinea();
+  };
+
   const seleccionarProducto = (idx: number, productoId: number | '') => {
     actualizarLinea(idx, { productoId, unidadId: '' });
     if (productoId !== '') void cargarConversiones(productoId);
@@ -326,18 +337,20 @@ export function DocumentosPage() {
       lineas.reduce((acc, l) => {
         const cant = Number(l.cantidad) || 0;
         const precio = Number(l.precioUnitario) || 0;
-        return acc + cant * precio;
+        const descuento = Number(l.descuento) || 0;
+        return acc + Math.max(0, cant * precio - descuento);
       }, 0),
     [lineas],
   );
 
   const productosRepetidos = useMemo(() => {
-    const vistos = new Set<number>();
-    const repetidos = new Set<number>();
+    const vistos = new Set<string>();
+    const repetidos = new Set<string>();
     for (const linea of lineas) {
-      if (linea.productoId === '') continue;
-      if (vistos.has(linea.productoId)) repetidos.add(linea.productoId);
-      vistos.add(linea.productoId);
+      if (linea.productoId === '' || linea.hotelId === '') continue;
+      const llave = `${linea.hotelId}-${linea.productoId}`;
+      if (vistos.has(llave)) repetidos.add(llave);
+      vistos.add(llave);
     }
     return repetidos;
   }, [lineas]);
@@ -350,31 +363,40 @@ export function DocumentosPage() {
     const numeroPedidoLimpio = numeroPedido.trim();
     if (!numeroDocumentoLimpio) return setError('Ingresa el No. Documento.');
     if (!numeroPedidoLimpio) return setError('Ingresa el No. de pedido.');
-    if (!hotelId || !proveedorId) return setError('Selecciona hotel y proveedor.');
+    if (!proveedorId) return setError('Selecciona proveedor.');
     const lineaConMasDeCuatroDecimales = lineas.some(
       (l) =>
         (l.cantidad && !tieneMaximoCuatroDecimales(l.cantidad)) ||
-        (l.precioUnitario && !tieneMaximoCuatroDecimales(l.precioUnitario)),
+        (l.precioUnitario && !tieneMaximoCuatroDecimales(l.precioUnitario)) ||
+        (l.descuento && !tieneMaximoCuatroDecimales(l.descuento)),
     );
+    if (retencion && !tieneMaximoCuatroDecimales(retencion)) {
+      return setError('La retencion permite maximo 4 decimales.');
+    }
     if (lineaConMasDeCuatroDecimales) {
-      return setError('Cantidad y precio unitario permiten maximo 4 decimales.');
+      return setError('Cantidad, precio unitario y descuento permiten maximo 4 decimales.');
     }
     const detalles = lineas
-      .filter((l) => l.productoId && l.unidadId && l.cantidad && l.precioUnitario)
+      .filter((l) => l.hotelId && l.productoId && l.unidadId && l.cantidad && l.precioUnitario)
       .map((l) => ({
+        hotelId: Number(l.hotelId),
         productoId: Number(l.productoId),
         unidadId: Number(l.unidadId),
         cantidad: Number(l.cantidad),
         precioUnitario: Number(l.precioUnitario),
+        descuento: Number(l.descuento) || 0,
       }));
 
-    if (detalles.length === 0) return setError('Agrega al menos un producto con cantidad y precio.');
+    if (detalles.length === 0) return setError('Agrega al menos un producto con hotel, cantidad y precio.');
+    if (detalles.some((l) => l.descuento > l.cantidad * l.precioUnitario)) {
+      return setError('El descuento no puede ser mayor al subtotal de la linea.');
+    }
 
     crearMutation.mutate({
       fecha,
       numeroDocumento: numeroDocumentoLimpio,
       numeroPedido: numeroPedidoLimpio,
-      hotelId: Number(hotelId),
+      hotelId: detalles[0].hotelId,
       proveedorId: Number(proveedorId),
       estado,
       tipoCompra,
@@ -628,7 +650,7 @@ export function DocumentosPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div>
                   <label className="label">Fecha *</label>
                   <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="field" />
@@ -640,22 +662,6 @@ export function DocumentosPage() {
                 <div>
                   <label className="label">No. de pedido *</label>
                   <input value={numeroPedido} onChange={(e) => setNumeroPedido(e.target.value)} required className="field" />
-                </div>
-                <div>
-                  <label className="label">Hotel *</label>
-                  <select
-                    value={hotelId}
-                    onChange={(e) => setHotelId(e.target.value === '' ? '' : Number(e.target.value))}
-                    required
-                    className="field"
-                  >
-                    <option value="">Selecciona…</option>
-                    {hoteles?.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.nombre}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div>
                   <label className="label">Proveedor *</label>
@@ -706,7 +712,7 @@ export function DocumentosPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setLineas((prev) => [lineaVacia(), ...prev])}
+                    onClick={agregarLinea}
                     className="btn-secondary btn-sm"
                   >
                     + Agregar línea
@@ -722,21 +728,40 @@ export function DocumentosPage() {
                 <div className="space-y-2">
                   {lineas.map((linea, idx) => {
                     const conversiones = linea.productoId ? conversionesPorProducto[Number(linea.productoId)] : undefined;
-                    const subtotal = (Number(linea.cantidad) || 0) * (Number(linea.precioUnitario) || 0);
-                    const repetida = linea.productoId !== '' && productosRepetidos.has(linea.productoId);
+                    const bruto = (Number(linea.cantidad) || 0) * (Number(linea.precioUnitario) || 0);
+                    const subtotal = Math.max(0, bruto - (Number(linea.descuento) || 0));
+                    const llaveRepetida = linea.hotelId !== '' && linea.productoId !== '' ? `${linea.hotelId}-${linea.productoId}` : '';
+                    const repetida = llaveRepetida !== '' && productosRepetidos.has(llaveRepetida);
 
                     return (
                       <div
                         key={idx}
-                        className={`grid gap-2 rounded-xl border p-3 lg:grid-cols-[minmax(220px,2fr)_minmax(130px,1fr)_110px_120px_110px_40px] lg:items-end ${
+                        className={`grid gap-2 rounded-xl border p-3 lg:grid-cols-[minmax(160px,1.2fr)_minmax(220px,2fr)_minmax(130px,1fr)_110px_120px_120px_110px_40px] lg:items-end ${
                           repetida ? 'border-amber-200 bg-amber-50/50' : 'border-slate-200 bg-slate-50/50'
                         }`}
                       >
+                        <div>
+                          <label className="label">Hotel</label>
+                          <select
+                            value={linea.hotelId}
+                            onChange={(e) => actualizarLinea(idx, { hotelId: e.target.value === '' ? '' : Number(e.target.value) })}
+                            onKeyDown={manejarEnterLinea}
+                            className="field bg-white"
+                          >
+                            <option value="">Hotel...</option>
+                            {hoteles?.map((h) => (
+                              <option key={h.id} value={h.id}>
+                                {h.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <div>
                           <label className="label">Producto</label>
                           <select
                             value={linea.productoId}
                             onChange={(e) => seleccionarProducto(idx, e.target.value === '' ? '' : Number(e.target.value))}
+                            onKeyDown={manejarEnterLinea}
                             className="field bg-white"
                           >
                             <option value="">Producto…</option>
@@ -752,6 +777,7 @@ export function DocumentosPage() {
                           <select
                             value={linea.unidadId}
                             onChange={(e) => actualizarLinea(idx, { unidadId: e.target.value === '' ? '' : Number(e.target.value) })}
+                            onKeyDown={manejarEnterLinea}
                             disabled={!linea.productoId}
                             className="field bg-white"
                           >
@@ -771,6 +797,7 @@ export function DocumentosPage() {
                             min="0"
                             value={linea.cantidad}
                             onChange={(e) => actualizarLinea(idx, { cantidad: e.target.value })}
+                            onKeyDown={manejarEnterLinea}
                             className="field bg-white"
                           />
                         </div>
@@ -782,11 +809,24 @@ export function DocumentosPage() {
                             min="0"
                             value={linea.precioUnitario}
                             onChange={(e) => actualizarLinea(idx, { precioUnitario: e.target.value })}
+                            onKeyDown={manejarEnterLinea}
                             className="field bg-white"
                           />
                         </div>
                         <div>
-                          <label className="label">Subtotal</label>
+                          <label className="label">Descuento</label>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            value={linea.descuento}
+                            onChange={(e) => actualizarLinea(idx, { descuento: e.target.value })}
+                            onKeyDown={manejarEnterLinea}
+                            className="field bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Total linea</label>
                           <div className="rounded-lg bg-white px-3 py-2 text-right text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
                             {Q(subtotal)}
                           </div>
@@ -813,7 +853,7 @@ export function DocumentosPage() {
                   <label className="label">Retención</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={retencion}
                     onChange={(e) => setRetencion(e.target.value)}

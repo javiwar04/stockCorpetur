@@ -93,8 +93,8 @@ public class DashboardServiceTests
             Fecha = hoy, NumeroDocumento = "MIX-01", NumeroPedido = "MIX-01", HotelId = 1, ProveedorId = 1,
             Detalles =
             {
-                new DetalleCompra { ProductoId = 1, UnidadId = 2, Cantidad = 2, PrecioUnitario = 150, FactorABase = 25 },
-                new DetalleCompra { ProductoId = 1, UnidadId = 1, Cantidad = 30, PrecioUnitario = 6, FactorABase = 1 },
+                new DetalleCompra { HotelId = 1, ProductoId = 1, UnidadId = 2, Cantidad = 2, PrecioUnitario = 150, FactorABase = 25 },
+                new DetalleCompra { HotelId = 1, ProductoId = 1, UnidadId = 1, Cantidad = 30, PrecioUnitario = 6, FactorABase = 1 },
             },
         };
         db.Documentos.Add(doc);

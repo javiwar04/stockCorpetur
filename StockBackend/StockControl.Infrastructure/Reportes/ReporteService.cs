@@ -38,10 +38,10 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             hojaDocs.Cell(fila, 1).Value = d.Fecha.ToDateTime(TimeOnly.MinValue);
             hojaDocs.Cell(fila, 1).Style.DateFormat.Format = "dd/mm/yyyy";
             hojaDocs.Cell(fila, 2).Value = d.NumeroDocumento;
-            hojaDocs.Cell(fila, 3).Value = d.Hotel.Nombre;
+            hojaDocs.Cell(fila, 3).Value = NombreHoteles(d);
             hojaDocs.Cell(fila, 4).Value = d.Proveedor.Nombre;
             hojaDocs.Cell(fila, 5).Value = d.TipoCompra.ToString();
-            hojaDocs.Cell(fila, 6).FormulaA1 = $"=SUMIFS(Detalle!I:I,Detalle!B:B,B{fila},Detalle!C:C,C{fila})";
+            hojaDocs.Cell(fila, 6).Value = d.Total;
             hojaDocs.Cell(fila, 6).Style.NumberFormat.Format = "#,##0.0000";
             fila++;
         }
@@ -54,6 +54,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         // --- Hoja 2: Detalle ---
         var hojaDet = libro.Worksheets.Add("Detalle");
         string[] encabezadosDet = ["Fecha", "No. Documento", "Hotel", "Tipo compra", "Producto", "Categoría", "Cantidad", "Precio unit. (Q)", "Total (Q)"];
+        encabezadosDet = ["Fecha", "No. Documento", "Hotel", "Tipo compra", "Producto", "Categoria", "Cantidad", "Precio unit. (Q)", "Descuento (Q)", "Total (Q)"];
         for (var i = 0; i < encabezadosDet.Length; i++)
         {
             var celda = hojaDet.Cell(1, i + 1);
@@ -69,15 +70,16 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 hojaDet.Cell(fila, 1).Value = d.Fecha.ToDateTime(TimeOnly.MinValue);
                 hojaDet.Cell(fila, 1).Style.DateFormat.Format = "dd/mm/yyyy";
                 hojaDet.Cell(fila, 2).Value = d.NumeroDocumento;
-                hojaDet.Cell(fila, 3).Value = d.Hotel.Nombre;
+                hojaDet.Cell(fila, 3).Value = linea.Hotel.Nombre;
                 hojaDet.Cell(fila, 4).Value = d.TipoCompra.ToString();
                 hojaDet.Cell(fila, 5).Value = linea.Producto.Nombre;
                 hojaDet.Cell(fila, 6).Value = linea.Producto.Categoria.ToString();
                 hojaDet.Cell(fila, 7).Value = linea.Cantidad;
                 hojaDet.Cell(fila, 8).Value = linea.PrecioUnitario;
                 hojaDet.Cell(fila, 8).Style.NumberFormat.Format = "#,##0.0000";
-                hojaDet.Cell(fila, 9).FormulaA1 = $"=G{fila}*H{fila}";
-                hojaDet.Cell(fila, 9).Style.NumberFormat.Format = "#,##0.0000";
+                hojaDet.Cell(fila, 9).Value = linea.Descuento;
+                hojaDet.Cell(fila, 10).Value = linea.Total;
+                hojaDet.Range(fila, 9, fila, 10).Style.NumberFormat.Format = "#,##0.0000";
                 fila++;
             }
         }
@@ -91,7 +93,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 g.Key.Nombre,
                 Categoria = g.Key.Categoria.ToString(),
                 Cantidad = g.Sum(l => l.Cantidad * l.FactorABase),
-                Gasto = g.Sum(l => l.Cantidad * l.PrecioUnitario),
+                Gasto = g.Sum(l => l.Total),
             })
             .OrderByDescending(x => x.Gasto)
             .ToList();
@@ -124,7 +126,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             {
                 Tipo = g.Key.ToString(),
                 Documentos = g.Count(),
-                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario)),
+                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Total)),
                 Retencion = g.Sum(d => d.Retencion),
             })
             .Select(x => new
@@ -170,7 +172,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 Documentos = g.Count(),
                 Desde = g.Min(d => d.Fecha),
                 Hasta = g.Max(d => d.Fecha),
-                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario)),
+                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Total)),
                 Retencion = g.Sum(d => d.Retencion),
             })
             .Select(x => new
@@ -233,13 +235,13 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         fila = 2;
         foreach (var d in documentos.OrderBy(d => d.Proveedor.Nombre).ThenBy(d => d.Fecha).ThenBy(d => d.NumeroDocumento))
         {
-            var bruto = d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario);
+            var bruto = d.Detalles.Sum(l => l.Total);
             hojaProv.Cell(fila, 1).Value = d.Fecha.ToDateTime(TimeOnly.MinValue);
             hojaProv.Cell(fila, 1).Style.DateFormat.Format = "dd/mm/yyyy";
             hojaProv.Cell(fila, 2).Value = d.Proveedor.Nombre;
             hojaProv.Cell(fila, 3).Value = d.Proveedor.Nit ?? "";
             hojaProv.Cell(fila, 4).Value = d.NumeroDocumento;
-            hojaProv.Cell(fila, 5).Value = d.Hotel.Nombre;
+            hojaProv.Cell(fila, 5).Value = NombreHoteles(d);
             hojaProv.Cell(fila, 6).Value = d.TipoCompra.ToString();
             hojaProv.Cell(fila, 7).Value = bruto;
             hojaProv.Cell(fila, 8).Value = d.Retencion;
@@ -260,11 +262,11 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
     {
         var (documentos, titulo) = await CargarDatosAsync(filtro, ct);
 
-        var granTotal = documentos.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario));
+        var granTotal = documentos.Sum(d => d.Detalles.Sum(l => l.Total));
         var porCategoria = documentos
             .SelectMany(d => d.Detalles)
             .GroupBy(l => l.Producto.Categoria)
-            .Select(g => new { Categoria = g.Key.ToString(), Gasto = g.Sum(l => l.Cantidad * l.PrecioUnitario) })
+            .Select(g => new { Categoria = g.Key.ToString(), Gasto = g.Sum(l => l.Total) })
             .OrderByDescending(x => x.Gasto)
             .ToList();
         var porTipo = documentos
@@ -273,7 +275,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             {
                 Tipo = g.Key.ToString(),
                 Documentos = g.Count(),
-                Gasto = g.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario)),
+                Gasto = g.Sum(d => d.Detalles.Sum(l => l.Total)),
             })
             .OrderBy(x => x.Tipo)
             .ToList();
@@ -284,7 +286,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
                 Proveedor = g.Key.Nombre,
                 Nit = g.Key.Nit,
                 Documentos = g.Count(),
-                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario)),
+                Bruto = g.Sum(d => d.Detalles.Sum(l => l.Total)),
                 Retencion = g.Sum(d => d.Retencion),
             })
             .Select(x => new
@@ -429,10 +431,10 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
 
                         foreach (var d in documentos)
                         {
-                            var total = d.Detalles.Sum(l => l.Cantidad * l.PrecioUnitario);
+                            var total = d.Detalles.Sum(l => l.Total);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Fecha.ToString("dd/MM/yyyy"));
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.NumeroDocumento);
-                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Hotel.Nombre);
+                            tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(NombreHoteles(d));
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.Proveedor.Nombre);
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(d.TipoCompra.ToString());
                             tabla.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"Q{total:N4}");
@@ -1122,16 +1124,18 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             .Include(d => d.Hotel)
             .Include(d => d.Proveedor)
             .Include(d => d.Detalles).ThenInclude(l => l.Producto)
+            .Include(d => d.Detalles).ThenInclude(l => l.Hotel)
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido)
+            .AsNoTracking()
             .AsQueryable();
 
+        var hotelesPermitidos = currentUser.HotelesPermitidos.ToHashSet();
         if (!currentUser.EsAdmin && !currentUser.EsGerencia)
         {
-            var hoteles = currentUser.HotelesPermitidos;
-            query = query.Where(d => hoteles.Contains(d.HotelId));
+            query = query.Where(d => d.Detalles.Any(l => hotelesPermitidos.Contains(l.HotelId)));
         }
 
-        if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
+        if (filtro.HotelId is not null) query = query.Where(d => d.Detalles.Any(l => l.HotelId == filtro.HotelId));
         if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
         if (!string.IsNullOrWhiteSpace(filtro.TipoCompra))
         {
@@ -1144,12 +1148,28 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         var documentos = await query
             .OrderBy(d => d.Fecha)
             .ThenBy(d => d.Proveedor.Nombre)
-            .ThenBy(d => d.Hotel.Nombre)
             .ToListAsync(ct);
+
+        foreach (var documento in documentos)
+        {
+            IEnumerable<DetalleCompra> detalles = documento.Detalles;
+            if (!currentUser.EsAdmin && !currentUser.EsGerencia)
+                detalles = detalles.Where(d => hotelesPermitidos.Contains(d.HotelId));
+            if (filtro.HotelId is not null)
+                detalles = detalles.Where(d => d.HotelId == filtro.HotelId);
+            documento.Detalles = detalles.ToList();
+        }
+
+        documentos = documentos
+            .Where(d => d.Detalles.Count > 0)
+            .OrderBy(d => d.Fecha)
+            .ThenBy(d => d.Proveedor.Nombre)
+            .ThenBy(NombreHoteles)
+            .ToList();
 
         var partes = new List<string>();
         if (filtro.HotelId is not null && documentos.Count > 0)
-            partes.Add($"Hotel: {documentos[0].Hotel.Nombre}");
+            partes.Add($"Hotel: {NombreHoteles(documentos[0])}");
         else if (filtro.HotelId is null)
             partes.Add("Todos los hoteles");
         if (filtro.ProveedorId is not null && documentos.Count > 0)
@@ -1191,7 +1211,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         var comprasQuery = db.Detalles
             .Include(d => d.DocumentoCompra).ThenInclude(d => d.Proveedor)
             .Where(d => d.ProductoId == filtro.ProductoId
-                        && d.DocumentoCompra.HotelId == filtro.HotelId
+                        && d.HotelId == filtro.HotelId
                         && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido);
 
         var movimientosQuery = db.Movimientos
@@ -1295,7 +1315,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         var query = db.Documentos
             .Include(d => d.Hotel)
             .Include(d => d.Proveedor)
-            .Include(d => d.Detalles)
+            .Include(d => d.Detalles).ThenInclude(det => det.Hotel)
             .Include(d => d.Pagos).ThenInclude(p => p.Proveedor)
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido)
             .Where(d => (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel)
@@ -1305,10 +1325,10 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
         if (!currentUser.EsAdmin && !currentUser.EsGerencia)
         {
             var hoteles = currentUser.HotelesPermitidos;
-            query = query.Where(d => hoteles.Contains(d.HotelId));
+            query = query.Where(d => d.Detalles.Any(det => hoteles.Contains(det.HotelId)));
         }
 
-        if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
+        if (filtro.HotelId is not null) query = query.Where(d => d.Detalles.Any(det => det.HotelId == filtro.HotelId));
         if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
         if (filtro.Desde is not null) query = query.Where(d => d.Fecha >= filtro.Desde);
         if (filtro.Hasta is not null) query = query.Where(d => d.Fecha <= filtro.Hasta);
@@ -1498,7 +1518,7 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             fechaVencimiento,
             d.Proveedor.DiasCredito,
             d.NumeroDocumento,
-            d.Hotel.Nombre,
+            NombreHoteles(d),
             d.Proveedor.Nombre,
             EstadoCuenta(saldo, pagado, fechaVencimiento, hoy),
             Math.Round(bruto, 4),
@@ -1536,6 +1556,20 @@ public class ReporteService(IApplicationDbContext db, ICurrentUser currentUser) 
             celda.Value = encabezados[i];
             celda.Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromHtml("#0f172a")).Font.SetFontColor(XLColor.White);
         }
+    }
+
+    private static string NombreHoteles(DocumentoCompra documento)
+    {
+        var nombres = documento.Detalles
+            .Select(d => d.Hotel?.Nombre)
+            .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+            .Distinct()
+            .OrderBy(nombre => nombre)
+            .ToList();
+
+        if (nombres.Count == 1) return nombres[0]!;
+        if (nombres.Count > 1) return "Varios";
+        return documento.Hotel?.Nombre ?? "";
     }
 
     private sealed record KardexReporte(

@@ -85,7 +85,7 @@ public class RecetaServiceTests
         var doc = new DocumentoCompra
         {
             Fecha = hoy.AddDays(-4), NumeroDocumento = "R-05", NumeroPedido = "R-05", HotelId = 1, ProveedorId = 1,
-            Detalles = { new DetalleCompra { ProductoId = 2, UnidadId = 1, Cantidad = 10, PrecioUnitario = 4, FactorABase = 1 } },
+            Detalles = { new DetalleCompra { HotelId = 1, ProductoId = 2, UnidadId = 1, Cantidad = 10, PrecioUnitario = 4, FactorABase = 1 } },
         };
         db.Documentos.Add(doc);
         db.SaveChanges();

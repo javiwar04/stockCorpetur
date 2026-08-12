@@ -137,10 +137,12 @@ public class ImportadorExcelService(IApplicationDbContext db) : IImportadorExcel
 
                     documento.Detalles.Add(new DetalleCompra
                     {
+                        HotelId = hotel.Id,
                         Producto = producto,
                         UnidadId = unidadBase.Id,
                         Cantidad = cantidad,
                         PrecioUnitario = precio,
+                        Descuento = 0m,
                         FactorABase = 1m,
                     });
                 }

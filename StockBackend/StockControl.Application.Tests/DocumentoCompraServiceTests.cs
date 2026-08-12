@@ -42,6 +42,30 @@ public class DocumentoCompraServiceTests
     }
 
     [Fact]
+    public async Task Crear_ConHotelesPorLineaYDescuento_DistribuyeInventario()
+    {
+        using var db = TestDb.Crear();
+        var user = new CurrentUserFake(esAdmin: true);
+        var service = new DocumentoCompraService(db, user);
+        var inventario = new InventarioService(db, user);
+        var peticion = new CrearDocumentoCompraRequest(
+            new DateOnly(2026, 7, 1), "MIX-001", "PED-MIX-001", 1, 1, 0, null,
+            [
+                new CrearDetalleCompraRequest(1, 1, 10, 6, 1, 5),
+                new CrearDetalleCompraRequest(1, 1, 4, 7, 2, 3),
+            ]);
+
+        var doc = await service.CrearAsync(peticion);
+
+        Assert.Equal("Varios", doc.HotelNombre);
+        Assert.Equal(80m, doc.Total);
+        Assert.Equal(55m, doc.Detalles[0].Total);
+        Assert.Equal(25m, doc.Detalles[1].Total);
+        Assert.Equal(10m, Assert.Single(await inventario.ExistenciasAsync(1)).Existencia);
+        Assert.Equal(4m, Assert.Single(await inventario.ExistenciasAsync(2)).Existencia);
+    }
+
+    [Fact]
     public async Task Crear_ConMasDeCuatroDecimales_Falla()
     {
         using var db = TestDb.Crear();

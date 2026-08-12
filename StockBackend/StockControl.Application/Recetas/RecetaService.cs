@@ -156,7 +156,7 @@ public class RecetaService(IApplicationDbContext db) : IRecetaService
             .Select(g => new
             {
                 ProductoId = g.Key,
-                Precio = g.Sum(d => d.Cantidad * d.PrecioUnitario) / g.Sum(d => d.Cantidad * d.FactorABase),
+                Precio = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento) / g.Sum(d => d.Cantidad * d.FactorABase),
             })
             .ToDictionaryAsync(x => x.ProductoId, x => x.Precio, ct);
 

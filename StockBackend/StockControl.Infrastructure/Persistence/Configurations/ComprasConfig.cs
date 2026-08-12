@@ -13,7 +13,7 @@ public class DocumentoCompraConfig : IEntityTypeConfiguration<DocumentoCompra>
         b.Property(x => x.NumeroPedido).HasMaxLength(60).IsRequired();
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).IsRequired();
         b.Property(x => x.TipoCompra).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(TipoCompra.Ordinaria);
-        b.Property(x => x.Retencion).HasPrecision(18, 2);
+        b.Property(x => x.Retencion).HasPrecision(18, 4);
         b.Property(x => x.Observaciones).HasMaxLength(500);
 
         // El total se calcula desde los detalles: no se persiste.
@@ -41,6 +41,7 @@ public class DetalleCompraConfig : IEntityTypeConfiguration<DetalleCompra>
     {
         b.Property(x => x.Cantidad).HasPrecision(18, 4);
         b.Property(x => x.PrecioUnitario).HasPrecision(18, 4);
+        b.Property(x => x.Descuento).HasPrecision(18, 4);
         b.Property(x => x.FactorABase).HasPrecision(18, 4);
 
         // Propiedades derivadas: no se persisten.
@@ -53,6 +54,11 @@ public class DetalleCompraConfig : IEntityTypeConfiguration<DetalleCompra>
             .HasForeignKey(x => x.DocumentoCompraId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        b.HasOne(x => x.Hotel)
+            .WithMany()
+            .HasForeignKey(x => x.HotelId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasOne(x => x.Producto)
             .WithMany(p => p.Detalles)
             .HasForeignKey(x => x.ProductoId)
@@ -64,6 +70,7 @@ public class DetalleCompraConfig : IEntityTypeConfiguration<DetalleCompra>
             .OnDelete(DeleteBehavior.Restrict);
 
         b.HasIndex(x => x.ProductoId);
+        b.HasIndex(x => new { x.HotelId, x.ProductoId });
     }
 }
 
@@ -72,7 +79,7 @@ public class PagoProveedorConfig : IEntityTypeConfiguration<PagoProveedor>
     public void Configure(EntityTypeBuilder<PagoProveedor> b)
     {
         b.ToTable("PagosProveedor");
-        b.Property(x => x.Monto).HasPrecision(18, 2);
+        b.Property(x => x.Monto).HasPrecision(18, 4);
         b.Property(x => x.MetodoPago).HasMaxLength(50).IsRequired();
         b.Property(x => x.Referencia).HasMaxLength(120);
         b.Property(x => x.Observaciones).HasMaxLength(500);

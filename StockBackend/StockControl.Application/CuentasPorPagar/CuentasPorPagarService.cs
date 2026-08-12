@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StockControl.Application.Auditoria;
 using StockControl.Application.Cierres;
+using StockControl.Application.Common;
 using StockControl.Application.Common.Interfaces;
 using StockControl.Domain.Entities;
 using StockControl.Domain.Enums;
@@ -23,7 +24,7 @@ public class CuentasPorPagarService(
         var query = db.Documentos
             .Include(d => d.Hotel)
             .Include(d => d.Proveedor)
-            .Include(d => d.Detalles)
+            .Include(d => d.Detalles).ThenInclude(det => det.Hotel)
             .Include(d => d.Pagos).ThenInclude(p => p.Proveedor)
             .Where(d => d.Estado == EstadoDocumentoCompra.Recibido)
             .Where(d => (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel)
@@ -33,10 +34,10 @@ public class CuentasPorPagarService(
         if (!currentUser.EsAdmin && !currentUser.EsGerencia)
         {
             var hoteles = currentUser.HotelesPermitidos;
-            query = query.Where(d => hoteles.Contains(d.HotelId));
+            query = query.Where(d => d.Detalles.Any(det => hoteles.Contains(det.HotelId)));
         }
 
-        if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
+        if (filtro.HotelId is not null) query = query.Where(d => d.Detalles.Any(det => det.HotelId == filtro.HotelId));
         if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
         if (filtro.Desde is not null) query = query.Where(d => d.Fecha >= filtro.Desde);
         if (filtro.Hasta is not null) query = query.Where(d => d.Fecha <= filtro.Hasta);
@@ -74,19 +75,20 @@ public class CuentasPorPagarService(
     {
         if (req.Monto <= 0)
             throw new InvalidOperationException("El monto del pago debe ser mayor a cero.");
+        DecimalPrecision.ValidarEscalaOperativa(req.Monto, "El monto del pago");
 
         var documento = await db.Documentos
             .Include(d => d.Hotel)
             .Include(d => d.Proveedor)
-            .Include(d => d.Detalles)
+            .Include(d => d.Detalles).ThenInclude(det => det.Hotel)
             .Include(d => d.Pagos).ThenInclude(p => p.Proveedor)
             .FirstOrDefaultAsync(d => d.Id == req.DocumentoCompraId, ct)
             ?? throw new InvalidOperationException("El documento no existe.");
 
-        if (!currentUser.PuedeAccederHotel(documento.HotelId))
+        if (!HotelesDocumento(documento).All(currentUser.PuedeAccederHotel))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(documento.HotelId, req.Fecha, "registrar pagos", ct);
+        await AsegurarPeriodosAbiertosAsync(HotelesDocumento(documento), req.Fecha, "registrar pagos", ct);
 
         if (documento.Estado != EstadoDocumentoCompra.Recibido)
             throw new InvalidOperationException("Solo se pueden pagar documentos recibidos.");
@@ -126,14 +128,14 @@ public class CuentasPorPagarService(
     public async Task<bool> EliminarPagoAsync(int id, CancellationToken ct = default)
     {
         var pago = await db.PagosProveedor
-            .Include(p => p.DocumentoCompra)
+            .Include(p => p.DocumentoCompra).ThenInclude(d => d.Detalles)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
         if (pago is null) return false;
 
-        if (!currentUser.PuedeAccederHotel(pago.DocumentoCompra.HotelId))
+        if (!HotelesDocumento(pago.DocumentoCompra).All(currentUser.PuedeAccederHotel))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(pago.DocumentoCompra.HotelId, pago.Fecha, "eliminar pagos", ct);
+        await AsegurarPeriodosAbiertosAsync(HotelesDocumento(pago.DocumentoCompra), pago.Fecha, "eliminar pagos", ct);
 
         var hotelId = pago.DocumentoCompra.HotelId;
         var monto = pago.Monto;
@@ -167,7 +169,7 @@ public class CuentasPorPagarService(
             fechaVencimiento,
             d.NumeroDocumento,
             d.HotelId,
-            d.Hotel.Nombre,
+            NombreHoteles(d),
             d.ProveedorId,
             d.Proveedor.Nombre,
             d.Proveedor.DiasCredito,
@@ -205,6 +207,33 @@ public class CuentasPorPagarService(
     private static bool EsImportadoHistorico(DocumentoCompra documento) =>
         documento.Observaciones == DocumentoCompra.ObservacionImportadoExcel
         || documento.Proveedor.Nombre == Proveedor.NombreProveedorImportacionExcel;
+
+    private async Task AsegurarPeriodosAbiertosAsync(IEnumerable<int> hotelIds, DateOnly fecha, string accion, CancellationToken ct)
+    {
+        foreach (var hotelId in hotelIds.Distinct())
+            await _cierreGuard.AsegurarPeriodoAbiertoAsync(hotelId, fecha, accion, ct);
+    }
+
+    private static List<int> HotelesDocumento(DocumentoCompra documento)
+    {
+        var hoteles = documento.Detalles.Select(d => d.HotelId).Distinct().ToList();
+        if (hoteles.Count == 0) hoteles.Add(documento.HotelId);
+        return hoteles;
+    }
+
+    private static string NombreHoteles(DocumentoCompra documento)
+    {
+        var nombres = documento.Detalles
+            .Select(d => d.Hotel?.Nombre)
+            .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+            .Distinct()
+            .OrderBy(nombre => nombre)
+            .ToList();
+
+        if (nombres.Count == 1) return nombres[0]!;
+        if (nombres.Count > 1) return "Varios";
+        return documento.Hotel?.Nombre ?? "";
+    }
 
     private async Task AuditarAsync(
         string accion,

@@ -216,7 +216,7 @@ public class ConteoInventarioService(
             .ToDictionaryAsync(p => p.ProductoId, ct);
 
         var compras = await db.Detalles
-            .Where(d => d.DocumentoCompra.HotelId == hotelId
+            .Where(d => d.HotelId == hotelId
                         && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido
                         && d.DocumentoCompra.Fecha <= hasta)
             .GroupBy(d => d.ProductoId)
@@ -250,9 +250,11 @@ public class ConteoInventarioService(
             {
                 d.Id,
                 d.ProductoId,
-                d.DocumentoCompra.HotelId,
+                d.HotelId,
                 d.DocumentoCompra.Fecha,
-                PrecioBase = d.PrecioUnitario / d.FactorABase,
+                PrecioBase = d.FactorABase == 0 || d.Cantidad == 0
+                    ? 0
+                    : (d.Cantidad * d.PrecioUnitario - d.Descuento) / (d.Cantidad * d.FactorABase),
             })
             .ToListAsync(ct);
 

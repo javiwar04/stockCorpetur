@@ -24,7 +24,7 @@ public class ReporteServiceTests
             Estado = EstadoDocumentoCompra.Recibido,
             Detalles =
             {
-                new DetalleCompra { ProductoId = 1, UnidadId = 1, Cantidad = 7, PrecioUnitario = 9, FactorABase = 1m },
+                new DetalleCompra { HotelId = 1, ProductoId = 1, UnidadId = 1, Cantidad = 7, PrecioUnitario = 9, FactorABase = 1m },
             },
         });
         db.SaveChanges();

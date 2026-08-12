@@ -24,12 +24,12 @@ public class DocumentoCompraService(
         var query = db.Documentos
             .Include(d => d.Hotel)
             .Include(d => d.Proveedor)
-            .Include(d => d.Detalles)
+            .Include(d => d.Detalles).ThenInclude(det => det.Hotel)
             .AsQueryable();
 
         query = AplicarScopingHotel(query);
 
-        if (filtro.HotelId is not null) query = query.Where(d => d.HotelId == filtro.HotelId);
+        if (filtro.HotelId is not null) query = query.Where(d => d.Detalles.Any(det => det.HotelId == filtro.HotelId));
         if (filtro.ProveedorId is not null) query = query.Where(d => d.ProveedorId == filtro.ProveedorId);
         if (!string.IsNullOrWhiteSpace(filtro.TipoCompra))
         {
@@ -42,52 +42,68 @@ public class DocumentoCompraService(
         var documentos = await query.OrderByDescending(d => d.Fecha).ToListAsync(ct);
 
         return documentos.Select(d => new DocumentoCompraResumenDto(
-            d.Id, d.Fecha, d.NumeroDocumento, d.NumeroPedido, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
-            d.Estado.ToString(), d.TipoCompra.ToString(), d.Total)).ToList();
+            d.Id,
+            d.Fecha,
+            d.NumeroDocumento,
+            d.NumeroPedido,
+            d.HotelId,
+            NombreHoteles(d),
+            d.ProveedorId,
+            d.Proveedor.Nombre,
+            d.Estado.ToString(),
+            d.TipoCompra.ToString(),
+            d.Total)).ToList();
     }
 
     public async Task<DocumentoCompraDto?> ObtenerAsync(int id, CancellationToken ct = default)
     {
-        var d = await db.Documentos
-            .Include(x => x.Hotel)
-            .Include(x => x.Proveedor)
-            .Include(x => x.Detalles).ThenInclude(det => det.Producto)
-            .Include(x => x.Detalles).ThenInclude(det => det.Unidad)
-            .FirstOrDefaultAsync(x => x.Id == id, ct);
+        var documento = await db.Documentos
+            .Include(d => d.Hotel)
+            .Include(d => d.Proveedor)
+            .Include(d => d.Detalles).ThenInclude(det => det.Producto)
+            .Include(d => d.Detalles).ThenInclude(det => det.Unidad)
+            .Include(d => d.Detalles).ThenInclude(det => det.Hotel)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
 
-        if (d is null) return null;
-        if (!currentUser.PuedeAccederHotel(d.HotelId))
+        if (documento is null) return null;
+        if (!PuedeAccederDocumento(documento))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-        return Mapear(d);
+        return Mapear(documento);
     }
 
     public async Task<DocumentoCompraDto> CrearAsync(CrearDocumentoCompraRequest req, CancellationToken ct = default)
     {
-        if (!currentUser.PuedeAccederHotel(req.HotelId))
-            throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
-
         if (req.Detalles.Count == 0)
             throw new InvalidOperationException("El documento debe tener al menos un producto.");
 
         var numeroDocumento = ValidarTextoObligatorio(req.NumeroDocumento, "numero de documento");
         var numeroPedido = ValidarTextoObligatorio(req.NumeroPedido, "numero de pedido");
+        ValidarMontoOperativo(req.Retencion, "La retencion");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(req.HotelId, req.Fecha, "registrar documentos", ct);
+        var hotelIds = ResolverHotelesLineas(req);
+        foreach (var hotelId in hotelIds)
+        {
+            if (!currentUser.PuedeAccederHotel(hotelId))
+                throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
+        }
+
+        await AsegurarPeriodosAbiertosAsync(hotelIds, req.Fecha, "registrar documentos", ct);
 
         var estado = ParsearEstadoParaGuardar(req.Estado, EstadoDocumentoCompra.Recibido);
+        var hotelPrincipalId = hotelIds[0];
 
         var numeroRepetido = await db.Documentos.AnyAsync(
-            x => x.HotelId == req.HotelId && x.NumeroDocumento == numeroDocumento, ct);
+            d => d.HotelId == hotelPrincipalId && d.NumeroDocumento == numeroDocumento, ct);
         if (numeroRepetido)
-            throw new InvalidOperationException("Ya existe un documento con ese número para este hotel.");
+            throw new InvalidOperationException("Ya existe un documento con ese numero para este hotel.");
 
         var documento = new DocumentoCompra
         {
             Fecha = req.Fecha,
             NumeroDocumento = numeroDocumento,
             NumeroPedido = numeroPedido,
-            HotelId = req.HotelId,
+            HotelId = hotelPrincipalId,
             ProveedorId = req.ProveedorId,
             Estado = estado,
             TipoCompra = ParsearTipoCompra(req.TipoCompra),
@@ -96,25 +112,7 @@ public class DocumentoCompraService(
         };
 
         foreach (var linea in req.Detalles)
-        {
-            if (linea.Cantidad <= 0) throw new InvalidOperationException("La cantidad debe ser mayor a cero.");
-            if (linea.PrecioUnitario < 0) throw new InvalidOperationException("El precio no puede ser negativo.");
-            DecimalPrecision.ValidarEscalaOperativa(linea.Cantidad, "La cantidad");
-            DecimalPrecision.ValidarEscalaOperativa(linea.PrecioUnitario, "El precio unitario");
-
-            var conversion = await db.Conversiones.FirstOrDefaultAsync(
-                c => c.ProductoId == linea.ProductoId && c.UnidadId == linea.UnidadId, ct)
-                ?? throw new InvalidOperationException("No existe conversión configurada para ese producto y unidad.");
-
-            documento.Detalles.Add(new DetalleCompra
-            {
-                ProductoId = linea.ProductoId,
-                UnidadId = linea.UnidadId,
-                Cantidad = linea.Cantidad,
-                PrecioUnitario = linea.PrecioUnitario,
-                FactorABase = conversion.FactorABase,
-            });
-        }
+            documento.Detalles.Add(await CrearDetalleAsync(linea, req.HotelId, ct));
 
         db.Documentos.Add(documento);
         await db.SaveChangesAsync(ct);
@@ -132,11 +130,12 @@ public class DocumentoCompraService(
 
     public async Task<DocumentoCompraDto?> ActualizarAsync(int id, CrearDocumentoCompraRequest req, CancellationToken ct = default)
     {
-        var documento = await db.Documentos.Include(d => d.Detalles).FirstOrDefaultAsync(d => d.Id == id, ct);
+        var documento = await db.Documentos
+            .Include(d => d.Detalles)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
         if (documento is null) return null;
 
-        // Debe poder acceder tanto al hotel actual del documento como al nuevo.
-        if (!currentUser.PuedeAccederHotel(documento.HotelId) || !currentUser.PuedeAccederHotel(req.HotelId))
+        if (!PuedeAccederDocumento(documento))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
         if (req.Detalles.Count == 0)
@@ -147,51 +146,41 @@ public class DocumentoCompraService(
 
         var numeroDocumento = ValidarTextoObligatorio(req.NumeroDocumento, "numero de documento");
         var numeroPedido = ValidarTextoObligatorio(req.NumeroPedido, "numero de pedido");
+        ValidarMontoOperativo(req.Retencion, "La retencion");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(documento.HotelId, documento.Fecha, "editar documentos", ct);
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(req.HotelId, req.Fecha, "editar documentos", ct);
+        var hotelIds = ResolverHotelesLineas(req);
+        foreach (var hotelId in hotelIds)
+        {
+            if (!currentUser.PuedeAccederHotel(hotelId))
+                throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
+        }
+
+        await AsegurarPeriodosAbiertosAsync(HotelesDocumento(documento), documento.Fecha, "editar documentos", ct);
+        await AsegurarPeriodosAbiertosAsync(hotelIds, req.Fecha, "editar documentos", ct);
 
         var estado = req.Estado is null
             ? documento.Estado
             : ParsearEstadoParaGuardar(req.Estado, documento.Estado);
 
+        var hotelPrincipalId = hotelIds[0];
         var numeroRepetido = await db.Documentos.AnyAsync(
-            x => x.Id != id && x.HotelId == req.HotelId && x.NumeroDocumento == numeroDocumento, ct);
+            d => d.Id != id && d.HotelId == hotelPrincipalId && d.NumeroDocumento == numeroDocumento, ct);
         if (numeroRepetido)
-            throw new InvalidOperationException("Ya existe otro documento con ese número para este hotel.");
+            throw new InvalidOperationException("Ya existe otro documento con ese numero para este hotel.");
 
         documento.Fecha = req.Fecha;
         documento.NumeroDocumento = numeroDocumento;
         documento.NumeroPedido = numeroPedido;
-        documento.HotelId = req.HotelId;
+        documento.HotelId = hotelPrincipalId;
         documento.ProveedorId = req.ProveedorId;
         documento.Estado = estado;
         documento.TipoCompra = ParsearTipoCompra(req.TipoCompra, documento.TipoCompra);
         documento.Retencion = req.Retencion;
         documento.Observaciones = req.Observaciones;
 
-        // Reemplaza las líneas: las anteriores se eliminan (cascade) y se agregan las nuevas.
         documento.Detalles.Clear();
         foreach (var linea in req.Detalles)
-        {
-            if (linea.Cantidad <= 0) throw new InvalidOperationException("La cantidad debe ser mayor a cero.");
-            if (linea.PrecioUnitario < 0) throw new InvalidOperationException("El precio no puede ser negativo.");
-            DecimalPrecision.ValidarEscalaOperativa(linea.Cantidad, "La cantidad");
-            DecimalPrecision.ValidarEscalaOperativa(linea.PrecioUnitario, "El precio unitario");
-
-            var conversion = await db.Conversiones.FirstOrDefaultAsync(
-                c => c.ProductoId == linea.ProductoId && c.UnidadId == linea.UnidadId, ct)
-                ?? throw new InvalidOperationException("No existe conversión configurada para ese producto y unidad.");
-
-            documento.Detalles.Add(new DetalleCompra
-            {
-                ProductoId = linea.ProductoId,
-                UnidadId = linea.UnidadId,
-                Cantidad = linea.Cantidad,
-                PrecioUnitario = linea.PrecioUnitario,
-                FactorABase = conversion.FactorABase,
-            });
-        }
+            documento.Detalles.Add(await CrearDetalleAsync(linea, req.HotelId, ct));
 
         await db.SaveChangesAsync(ct);
         await AuditarAsync(
@@ -202,21 +191,22 @@ public class DocumentoCompraService(
             $"Documento {documento.NumeroDocumento} actualizado",
             $"Estado {documento.Estado}; tipo {documento.TipoCompra}; total Q{documento.Total:N4}",
             ct);
+
         return await ObtenerAsync(id, ct);
     }
 
     public async Task<DocumentoCompraDto?> RecibirAsync(int id, CancellationToken ct = default)
     {
-        var documento = await db.Documentos.FirstOrDefaultAsync(d => d.Id == id, ct);
+        var documento = await db.Documentos.Include(d => d.Detalles).FirstOrDefaultAsync(d => d.Id == id, ct);
         if (documento is null) return null;
 
-        if (!currentUser.PuedeAccederHotel(documento.HotelId))
+        if (!PuedeAccederDocumento(documento))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
         if (documento.Estado == EstadoDocumentoCompra.Anulado)
             throw new InvalidOperationException("No se puede recibir un documento anulado.");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(documento.HotelId, documento.Fecha, "recibir documentos", ct);
+        await AsegurarPeriodosAbiertosAsync(HotelesDocumento(documento), documento.Fecha, "recibir documentos", ct);
 
         documento.Estado = EstadoDocumentoCompra.Recibido;
         await db.SaveChangesAsync(ct);
@@ -228,18 +218,19 @@ public class DocumentoCompraService(
             $"Documento {documento.NumeroDocumento} marcado como recibido",
             null,
             ct);
+
         return await ObtenerAsync(id, ct);
     }
 
     public async Task<DocumentoCompraDto?> AnularAsync(int id, CancellationToken ct = default)
     {
-        var documento = await db.Documentos.FirstOrDefaultAsync(d => d.Id == id, ct);
+        var documento = await db.Documentos.Include(d => d.Detalles).FirstOrDefaultAsync(d => d.Id == id, ct);
         if (documento is null) return null;
 
-        if (!currentUser.PuedeAccederHotel(documento.HotelId))
+        if (!PuedeAccederDocumento(documento))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(documento.HotelId, documento.Fecha, "anular documentos", ct);
+        await AsegurarPeriodosAbiertosAsync(HotelesDocumento(documento), documento.Fecha, "anular documentos", ct);
 
         documento.Estado = EstadoDocumentoCompra.Anulado;
         await db.SaveChangesAsync(ct);
@@ -251,18 +242,19 @@ public class DocumentoCompraService(
             $"Documento {documento.NumeroDocumento} anulado",
             null,
             ct);
+
         return await ObtenerAsync(id, ct);
     }
 
     public async Task<bool> EliminarAsync(int id, CancellationToken ct = default)
     {
-        var documento = await db.Documentos.FirstOrDefaultAsync(d => d.Id == id, ct);
+        var documento = await db.Documentos.Include(d => d.Detalles).FirstOrDefaultAsync(d => d.Id == id, ct);
         if (documento is null) return false;
 
-        if (!currentUser.PuedeAccederHotel(documento.HotelId))
+        if (!PuedeAccederDocumento(documento))
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-        await _cierreGuard.AsegurarPeriodoAbiertoAsync(documento.HotelId, documento.Fecha, "eliminar documentos", ct);
+        await AsegurarPeriodosAbiertosAsync(HotelesDocumento(documento), documento.Fecha, "eliminar documentos", ct);
 
         var hotelId = documento.HotelId;
         var numero = documento.NumeroDocumento;
@@ -276,23 +268,128 @@ public class DocumentoCompraService(
             $"Documento {numero} eliminado",
             null,
             ct);
+
         return true;
     }
 
-    /// <summary>Admin/Gerencia ven todo; un Digitador solo ve sus hoteles asignados.</summary>
     private IQueryable<DocumentoCompra> AplicarScopingHotel(IQueryable<DocumentoCompra> query)
     {
         if (currentUser.EsAdmin || currentUser.EsGerencia) return query;
+
         var hoteles = currentUser.HotelesPermitidos;
-        return query.Where(d => hoteles.Contains(d.HotelId));
+        return query.Where(d => d.Detalles.Any()
+            ? d.Detalles.All(det => hoteles.Contains(det.HotelId))
+            : hoteles.Contains(d.HotelId));
+    }
+
+    private async Task<DetalleCompra> CrearDetalleAsync(
+        CrearDetalleCompraRequest linea,
+        int? hotelDocumentoId,
+        CancellationToken ct)
+    {
+        var hotelId = linea.HotelId ?? hotelDocumentoId
+            ?? throw new InvalidOperationException("Cada linea debe tener un hotel.");
+
+        if (hotelId <= 0)
+            throw new InvalidOperationException("Cada linea debe tener un hotel.");
+
+        if (linea.Cantidad <= 0) throw new InvalidOperationException("La cantidad debe ser mayor a cero.");
+        if (linea.PrecioUnitario < 0) throw new InvalidOperationException("El precio no puede ser negativo.");
+        if (linea.Descuento < 0) throw new InvalidOperationException("El descuento no puede ser negativo.");
+
+        ValidarMontoOperativo(linea.Cantidad, "La cantidad");
+        ValidarMontoOperativo(linea.PrecioUnitario, "El precio unitario");
+        ValidarMontoOperativo(linea.Descuento, "El descuento");
+
+        var bruto = linea.Cantidad * linea.PrecioUnitario;
+        if (linea.Descuento > bruto)
+            throw new InvalidOperationException("El descuento no puede ser mayor al subtotal de la linea.");
+
+        var conversion = await db.Conversiones.FirstOrDefaultAsync(
+            c => c.ProductoId == linea.ProductoId && c.UnidadId == linea.UnidadId, ct)
+            ?? throw new InvalidOperationException("No existe conversion configurada para ese producto y unidad.");
+
+        return new DetalleCompra
+        {
+            HotelId = hotelId,
+            ProductoId = linea.ProductoId,
+            UnidadId = linea.UnidadId,
+            Cantidad = linea.Cantidad,
+            PrecioUnitario = linea.PrecioUnitario,
+            Descuento = linea.Descuento,
+            FactorABase = conversion.FactorABase,
+        };
+    }
+
+    private static List<int> ResolverHotelesLineas(CrearDocumentoCompraRequest req)
+    {
+        var hoteles = req.Detalles
+            .Select(linea => linea.HotelId ?? req.HotelId)
+            .Distinct()
+            .ToList();
+
+        if (hoteles.Count == 0 || hoteles.Any(h => h <= 0))
+            throw new InvalidOperationException("Cada linea debe tener un hotel.");
+
+        return hoteles;
+    }
+
+    private async Task AsegurarPeriodosAbiertosAsync(IEnumerable<int> hotelIds, DateOnly fecha, string accion, CancellationToken ct)
+    {
+        foreach (var hotelId in hotelIds.Distinct())
+            await _cierreGuard.AsegurarPeriodoAbiertoAsync(hotelId, fecha, accion, ct);
+    }
+
+    private bool PuedeAccederDocumento(DocumentoCompra documento) =>
+        HotelesDocumento(documento).All(currentUser.PuedeAccederHotel);
+
+    private static List<int> HotelesDocumento(DocumentoCompra documento)
+    {
+        var hoteles = documento.Detalles.Select(d => d.HotelId).Distinct().ToList();
+        if (hoteles.Count == 0) hoteles.Add(documento.HotelId);
+        return hoteles;
     }
 
     private static DocumentoCompraDto Mapear(DocumentoCompra d) => new(
-        d.Id, d.Fecha, d.NumeroDocumento, d.NumeroPedido, d.HotelId, d.Hotel.Nombre, d.ProveedorId, d.Proveedor.Nombre,
-        d.Estado.ToString(), d.TipoCompra.ToString(), d.Retencion, d.Observaciones, d.Total,
+        d.Id,
+        d.Fecha,
+        d.NumeroDocumento,
+        d.NumeroPedido,
+        d.HotelId,
+        NombreHoteles(d),
+        d.ProveedorId,
+        d.Proveedor.Nombre,
+        d.Estado.ToString(),
+        d.TipoCompra.ToString(),
+        d.Retencion,
+        d.Observaciones,
+        d.Total,
         d.Detalles.Select(det => new DetalleCompraDto(
-            det.Id, det.ProductoId, det.Producto.Nombre, det.UnidadId, det.Unidad.Nombre,
-            det.Cantidad, det.PrecioUnitario, det.Total)).ToList());
+            det.Id,
+            det.ProductoId,
+            det.Producto.Nombre,
+            det.UnidadId,
+            det.Unidad.Nombre,
+            det.HotelId,
+            det.Hotel.Nombre,
+            det.Cantidad,
+            det.PrecioUnitario,
+            det.Descuento,
+            det.Total)).ToList());
+
+    private static string NombreHoteles(DocumentoCompra d)
+    {
+        var nombres = d.Detalles
+            .Select(det => det.Hotel?.Nombre)
+            .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+            .Distinct()
+            .OrderBy(nombre => nombre)
+            .ToList();
+
+        if (nombres.Count == 1) return nombres[0]!;
+        if (nombres.Count > 1) return "Varios";
+        return d.Hotel?.Nombre ?? "";
+    }
 
     private static string ValidarTextoObligatorio(string? valor, string campo)
     {
@@ -301,6 +398,9 @@ public class DocumentoCompraService(
 
         return valor.Trim();
     }
+
+    private static void ValidarMontoOperativo(decimal valor, string campo) =>
+        DecimalPrecision.ValidarEscalaOperativa(valor, campo);
 
     private static EstadoDocumentoCompra ParsearEstadoParaGuardar(string? valor, EstadoDocumentoCompra predeterminado)
     {

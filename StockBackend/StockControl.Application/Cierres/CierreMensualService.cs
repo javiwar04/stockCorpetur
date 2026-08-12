@@ -181,13 +181,13 @@ public class CierreMensualService(
 
         var detallesPeriodo = await db.Detalles
             .Include(d => d.DocumentoCompra)
-            .Where(d => d.DocumentoCompra.HotelId == hotelId
+            .Where(d => d.HotelId == hotelId
                         && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido
                         && d.DocumentoCompra.Fecha >= inicio
                         && d.DocumentoCompra.Fecha < fin)
             .ToListAsync(ct);
 
-        var comprasTotal = detallesPeriodo.Sum(d => d.Cantidad * d.PrecioUnitario);
+        var comprasTotal = detallesPeriodo.Sum(d => d.Total);
         var documentosCompra = detallesPeriodo.Select(d => d.DocumentoCompraId).Distinct().Count();
 
         var inventario = await CalcularInventarioAsync(hotelId, fin, ct);
@@ -242,7 +242,7 @@ public class CierreMensualService(
         var saldos = documentosCxP
             .Select(d =>
             {
-                var bruto = d.Detalles.Sum(x => x.Cantidad * x.PrecioUnitario);
+                var bruto = d.Detalles.Sum(x => x.Total);
                 var neto = Math.Max(0, bruto - d.Retencion);
                 var pagado = d.Pagos.Where(p => p.Fecha < fin).Sum(p => p.Monto);
                 var saldo = Math.Max(0, neto - pagado);
@@ -282,7 +282,7 @@ public class CierreMensualService(
     private async Task<Dictionary<int, decimal>> CalcularInventarioAsync(int hotelId, DateOnly finExclusivo, CancellationToken ct)
     {
         var compras = await db.Detalles
-            .Where(d => d.DocumentoCompra.HotelId == hotelId
+            .Where(d => d.HotelId == hotelId
                         && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido
                         && d.DocumentoCompra.Fecha < finExclusivo)
             .GroupBy(d => d.ProductoId)
@@ -325,9 +325,11 @@ public class CierreMensualService(
             {
                 d.Id,
                 d.ProductoId,
-                d.DocumentoCompra.HotelId,
+                d.HotelId,
                 d.DocumentoCompra.Fecha,
-                PrecioBase = d.PrecioUnitario / d.FactorABase,
+                PrecioBase = d.FactorABase == 0 || d.Cantidad == 0
+                    ? 0
+                    : (d.Cantidad * d.PrecioUnitario - d.Descuento) / (d.Cantidad * d.FactorABase),
             })
             .ToListAsync(ct);
 

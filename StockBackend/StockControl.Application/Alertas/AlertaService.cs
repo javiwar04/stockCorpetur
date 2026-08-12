@@ -58,8 +58,8 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
 
         var compras = await db.Detalles
             .Where(d => d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido
-                        && hotelIds.Contains(d.DocumentoCompra.HotelId))
-            .GroupBy(d => new { d.DocumentoCompra.HotelId, d.ProductoId })
+                        && hotelIds.Contains(d.HotelId))
+            .GroupBy(d => new { d.HotelId, d.ProductoId })
             .Select(g => new { g.Key.HotelId, g.Key.ProductoId, Cantidad = g.Sum(d => d.Cantidad * d.FactorABase) })
             .ToListAsync(ct);
 
@@ -255,7 +255,9 @@ public class AlertaService(IApplicationDbContext db, ICurrentUser currentUser) :
                 d.Id,
                 d.ProductoId,
                 d.DocumentoCompra.Fecha,
-                PrecioBase = d.PrecioUnitario / d.FactorABase,
+                PrecioBase = d.FactorABase == 0 || d.Cantidad == 0
+                    ? 0
+                    : (d.Cantidad * d.PrecioUnitario - d.Descuento) / (d.Cantidad * d.FactorABase),
             })
             .ToListAsync(ct);
 

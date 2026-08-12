@@ -39,7 +39,7 @@ public class InventarioService(
             throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
         var comprado = await db.Detalles
-            .Where(d => d.DocumentoCompra.HotelId == hotelId && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido)
+            .Where(d => d.HotelId == hotelId && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido)
             .GroupBy(d => d.ProductoId)
             .Select(g => new { ProductoId = g.Key, Total = g.Sum(d => d.Cantidad * d.FactorABase) })
             .ToDictionaryAsync(x => x.ProductoId, x => x.Total, ct);
@@ -116,7 +116,7 @@ public class InventarioService(
         var comprasQuery = db.Detalles
             .Include(d => d.DocumentoCompra).ThenInclude(d => d.Proveedor)
             .Where(d => d.ProductoId == filtro.ProductoId
-                        && d.DocumentoCompra.HotelId == filtro.HotelId
+                        && d.HotelId == filtro.HotelId
                         && d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido);
 
         var movimientosQuery = db.Movimientos
@@ -492,7 +492,7 @@ public class InventarioService(
             .ToDictionary(
                 g => g.Key,
                 g => g
-                    .OrderByDescending(d => d.DocumentoCompra.HotelId == hotelId)
+                    .OrderByDescending(d => d.HotelId == hotelId)
                     .ThenByDescending(d => d.DocumentoCompra.Fecha)
                     .ThenByDescending(d => d.Id)
                     .First());
@@ -507,7 +507,7 @@ public class InventarioService(
                     null, null, null, null, null);
             }
 
-            var precioBase = ultimo.PrecioUnitario / ultimo.FactorABase;
+            var precioBase = ultimo.PrecioPorUnidadBase;
             return new SugerenciaCompraDto(
                 hotel.Id,
                 hotel.Nombre,

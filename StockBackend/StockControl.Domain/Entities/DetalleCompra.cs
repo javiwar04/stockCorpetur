@@ -11,6 +11,9 @@ public class DetalleCompra : EntidadBase
     public int DocumentoCompraId { get; set; }
     public DocumentoCompra DocumentoCompra { get; set; } = null!;
 
+    public int HotelId { get; set; }
+    public Hotel Hotel { get; set; } = null!;
+
     public int ProductoId { get; set; }
     public Producto Producto { get; set; } = null!;
 
@@ -20,6 +23,7 @@ public class DetalleCompra : EntidadBase
 
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
+    public decimal Descuento { get; set; }
 
     /// <summary>
     /// Factor de conversión a unidad base aplicado al momento de registrar
@@ -27,11 +31,11 @@ public class DetalleCompra : EntidadBase
     /// </summary>
     public decimal FactorABase { get; set; } = 1m;
 
-    public decimal Total => Cantidad * PrecioUnitario;
+    public decimal Total => Cantidad * PrecioUnitario - Descuento;
 
     /// <summary>Cantidad expresada en la unidad base del producto.</summary>
     public decimal CantidadBase => Cantidad * FactorABase;
 
     /// <summary>Precio por unidad base: la métrica comparable entre documentos y hoteles.</summary>
-    public decimal PrecioPorUnidadBase => FactorABase == 0 ? 0 : PrecioUnitario / FactorABase;
+    public decimal PrecioPorUnidadBase => CantidadBase == 0 ? 0 : Total / CantidadBase;
 }

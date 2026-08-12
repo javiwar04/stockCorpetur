@@ -7,8 +7,11 @@ export interface DetalleCompra {
   productoNombre: string;
   unidadId: number;
   unidadNombre: string;
+  hotelId: number;
+  hotelNombre: string;
   cantidad: number;
   precioUnitario: number;
+  descuento: number;
   total: number;
 }
 
@@ -44,10 +47,12 @@ export interface DocumentoCompraResumen {
 }
 
 export interface LineaNueva {
+  hotelId: number | '';
   productoId: number | '';
   unidadId: number | '';
   cantidad: string;
   precioUnitario: string;
+  descuento: string;
 }
 
 export interface CrearDocumentoCompraRequest {
@@ -60,5 +65,5 @@ export interface CrearDocumentoCompraRequest {
   tipoCompra?: TipoCompra;
   retencion: number;
   observaciones?: string;
-  detalles: { productoId: number; unidadId: number; cantidad: number; precioUnitario: number }[];
+  detalles: { hotelId: number; productoId: number; unidadId: number; cantidad: number; precioUnitario: number; descuento: number }[];
 }

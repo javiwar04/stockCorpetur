@@ -20,18 +20,18 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
         var delMes = Detalles(hotelId).Where(d => d.DocumentoCompra.Fecha >= inicio && d.DocumentoCompra.Fecha < fin);
 
-        var gastoTotal = await delMes.SumAsync(d => (decimal?)(d.Cantidad * d.PrecioUnitario), ct) ?? 0m;
+        var gastoTotal = await delMes.SumAsync(d => (decimal?)(d.Cantidad * d.PrecioUnitario - d.Descuento), ct) ?? 0m;
 
         var gastoAnterior = await Detalles(hotelId)
             .Where(d => d.DocumentoCompra.Fecha >= inicioAnterior && d.DocumentoCompra.Fecha < inicio)
-            .SumAsync(d => (decimal?)(d.Cantidad * d.PrecioUnitario), ct) ?? 0m;
+            .SumAsync(d => (decimal?)(d.Cantidad * d.PrecioUnitario - d.Descuento), ct) ?? 0m;
 
         var documentos = await Documentos(hotelId)
             .CountAsync(d => d.Fecha >= inicio && d.Fecha < fin, ct);
 
         var porHotelRaw = await delMes
-            .GroupBy(d => new { d.DocumentoCompra.HotelId, d.DocumentoCompra.Hotel.Nombre })
-            .Select(g => new { g.Key.HotelId, g.Key.Nombre, Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario) })
+            .GroupBy(d => new { d.HotelId, d.Hotel.Nombre })
+            .Select(g => new { g.Key.HotelId, g.Key.Nombre, Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento) })
             .OrderByDescending(x => x.Gasto)
             .ToListAsync(ct);
 
@@ -60,7 +60,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
         var porCategoria = await delMes
             .GroupBy(d => d.Producto.Categoria)
-            .Select(g => new { g.Key, Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario) })
+            .Select(g => new { g.Key, Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento) })
             .OrderByDescending(x => x.Gasto)
             .ToListAsync(ct);
 
@@ -102,7 +102,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             {
                 g.Key.Year,
                 g.Key.Month,
-                Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario),
+                Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento),
                 CantidadBase = g.Sum(d => d.Cantidad * d.FactorABase),
             })
             .OrderBy(x => x.Year).ThenBy(x => x.Month)
@@ -123,8 +123,8 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             .Where(d => d.DocumentoCompra.Fecha >= desde)
             .GroupBy(d => new
             {
-                d.DocumentoCompra.HotelId,
-                Hotel = d.DocumentoCompra.Hotel.Nombre,
+                d.HotelId,
+                Hotel = d.Hotel.Nombre,
                 d.DocumentoCompra.Fecha.Year,
                 d.DocumentoCompra.Fecha.Month,
             })
@@ -134,7 +134,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 g.Key.Hotel,
                 g.Key.Year,
                 g.Key.Month,
-                Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario),
+                Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento),
             })
             .ToListAsync(ct);
 
@@ -164,7 +164,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 g.Key.ProductoId,
                 g.Key.Producto,
                 g.Key.Unidad,
-                Precio = g.Sum(d => d.Cantidad * d.PrecioUnitario) / g.Sum(d => d.Cantidad * d.FactorABase),
+                Precio = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento) / g.Sum(d => d.Cantidad * d.FactorABase),
                 UltimaCompra = g.Max(d => d.DocumentoCompra.Fecha),
             })
             .ToListAsync(ct);
@@ -181,7 +181,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             .Select(g => new
             {
                 ProductoId = g.Key,
-                Precio = g.Sum(d => d.Cantidad * d.PrecioUnitario) / g.Sum(d => d.Cantidad * d.FactorABase),
+                Precio = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento) / g.Sum(d => d.Cantidad * d.FactorABase),
             })
             .ToDictionaryAsync(x => x.ProductoId, x => x.Precio, ct);
 
@@ -234,17 +234,19 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
 
         var detalles = await db.Detalles
             .Where(d => d.DocumentoCompra.Estado == EstadoDocumentoCompra.Recibido
-                        && hotelIds.Contains(d.DocumentoCompra.HotelId)
+                        && hotelIds.Contains(d.HotelId)
                         && d.DocumentoCompra.Fecha < fin)
             .Select(d => new
             {
                 d.Id,
                 d.ProductoId,
-                d.DocumentoCompra.HotelId,
+                d.HotelId,
                 d.DocumentoCompra.Fecha,
                 CantidadBase = d.Cantidad * d.FactorABase,
-                Total = d.Cantidad * d.PrecioUnitario,
-                PrecioBase = d.FactorABase == 0 ? 0 : d.PrecioUnitario / d.FactorABase,
+                Total = d.Cantidad * d.PrecioUnitario - d.Descuento,
+                PrecioBase = d.FactorABase == 0 || d.Cantidad == 0
+                    ? 0
+                    : (d.Cantidad * d.PrecioUnitario - d.Descuento) / (d.Cantidad * d.FactorABase),
             })
             .ToListAsync(ct);
 
@@ -376,7 +378,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 .Include(d => d.Detalles)
                 .Include(d => d.Pagos)
                 .Where(d => d.Estado == EstadoDocumentoCompra.Recibido
-                            && hotelIds.Contains(d.HotelId)
+                            && d.Detalles.Any(det => hotelIds.Contains(det.HotelId))
                             && (d.Observaciones ?? "") != DocumentoCompra.ObservacionImportadoExcel
                             && d.Proveedor.Nombre != Proveedor.NombreProveedorImportacionExcel
                             && d.Fecha < fin)
@@ -448,12 +450,12 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             if (!currentUser.PuedeAccederHotel(hotelId.Value))
                 throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-            return query.Where(d => d.DocumentoCompra.HotelId == hotelId.Value);
+            return query.Where(d => d.HotelId == hotelId.Value);
         }
 
         if (currentUser.EsAdmin || currentUser.EsGerencia) return query;
         var hoteles = currentUser.HotelesPermitidos;
-        return query.Where(d => hoteles.Contains(d.DocumentoCompra.HotelId));
+        return query.Where(d => hoteles.Contains(d.HotelId));
     }
 
     private IQueryable<DocumentoCompra> Documentos(int? hotelId = null)
@@ -464,12 +466,14 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
             if (!currentUser.PuedeAccederHotel(hotelId.Value))
                 throw new UnauthorizedAccessException("No tienes acceso a ese hotel.");
 
-            return query.Where(d => d.HotelId == hotelId.Value);
+            return query.Where(d => d.Detalles.Any(det => det.HotelId == hotelId.Value));
         }
 
         if (currentUser.EsAdmin || currentUser.EsGerencia) return query;
         var hoteles = currentUser.HotelesPermitidos;
-        return query.Where(d => hoteles.Contains(d.HotelId));
+        return query.Where(d => d.Detalles.Any()
+            ? d.Detalles.All(det => hoteles.Contains(det.HotelId))
+            : hoteles.Contains(d.HotelId));
     }
 
     /// <summary>Clase con member-init (no record posicional) para que EF Core traduzca la proyección agrupada.</summary>
@@ -524,7 +528,7 @@ public class DashboardService(IApplicationDbContext db, ICurrentUser currentUser
                 Categoria = g.Key.Categoria,
                 Unidad = g.Key.Unidad,
                 CantidadBase = g.Sum(d => d.Cantidad * d.FactorABase),
-                Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario),
+                Gasto = g.Sum(d => d.Cantidad * d.PrecioUnitario - d.Descuento),
             });
     }
 
