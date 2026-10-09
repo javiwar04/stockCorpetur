@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\StockControl.Application\StockControl.Application.csproj" />
+    <ProjectReference Include="..\StockControl.Api\StockControl.Api.csproj" />
     <ProjectReference Include="..\StockControl.Domain\StockControl.Domain.csproj" />
     <ProjectReference Include="..\StockControl.Infrastructure\StockControl.Infrastructure.csproj" />
   </ItemGroup>

@@ -54,3 +54,15 @@ export const crearUsuario = (data: {
 
 export const cambiarActivoUsuario = (id: string, activo: boolean) =>
   api.put(`/api/auth/usuarios/${id}/activo`, { activo });
+
+export interface ActualizarUsuarioRequest {
+  nombre: string;
+  email: string;
+  rol: Rol;
+  hoteles: number[];
+  activo: boolean;
+  password?: string;
+}
+
+export const actualizarUsuario = (id: string, data: ActualizarUsuarioRequest) =>
+  api.put<UsuarioLista>(`/api/auth/usuarios/${id}`, data).then((r) => r.data);

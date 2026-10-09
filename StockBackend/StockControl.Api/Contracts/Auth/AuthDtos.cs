@@ -38,3 +38,11 @@ public record UsuarioListaDto(
     bool Activo);
 
 public record ActivarUsuarioRequest(bool Activo);
+
+public record ActualizarUsuarioRequest(
+    [Required] string Nombre,
+    [Required, EmailAddress] string Email,
+    [Required] string Rol,
+    IReadOnlyCollection<int>? Hoteles,
+    bool Activo,
+    [MinLength(8)] string? Password = null);

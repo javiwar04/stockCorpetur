@@ -39,7 +39,7 @@ api.interceptors.response.use(
   (r) => r,
   async (error: AxiosError) => {
     const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
-    const esAuth = original?.url?.includes('/api/auth/');
+    const esAuth = /\/api\/auth\/(login|refresh)(?:[/?]|$)/.test(original?.url ?? '');
 
     if (error.response?.status === 401 && original && !original._retry && !esAuth) {
       original._retry = true;

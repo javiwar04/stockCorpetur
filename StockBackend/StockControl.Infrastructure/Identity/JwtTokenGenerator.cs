@@ -12,7 +12,7 @@ public class JwtTokenGenerator(IOptions<JwtSettings> options) : IJwtTokenGenerat
 {
     private readonly JwtSettings _settings = options.Value;
 
-    public TokenResult Generar(string userId, string userName, IEnumerable<string> roles, IEnumerable<int> hotelesPermitidos)
+    public TokenResult Generar(string userId, string userName, IEnumerable<string> roles, IEnumerable<int> hotelesPermitidos, string securityStamp)
     {
         var expira = DateTime.UtcNow.AddMinutes(_settings.AccessTokenMinutos);
 
@@ -20,7 +20,8 @@ public class JwtTokenGenerator(IOptions<JwtSettings> options) : IJwtTokenGenerat
         {
             new(JwtRegisteredClaimNames.Sub, userId),
             new(JwtRegisteredClaimNames.UniqueName, userName),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("security_stamp", securityStamp)
         };
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         claims.AddRange(hotelesPermitidos.Select(h => new Claim(ClaimsApp.Hotel, h.ToString())));

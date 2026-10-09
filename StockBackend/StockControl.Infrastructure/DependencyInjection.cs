@@ -59,6 +59,7 @@ public static class DependencyInjection
         // JWT.
         services.Configure<JwtSettings>(config.GetSection(JwtSettings.Seccion));
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<UsuarioSessionValidator>();
 
         var jwt = config.GetSection(JwtSettings.Seccion).Get<JwtSettings>()
                   ?? throw new InvalidOperationException("Falta la seccion de configuracion 'Jwt'.");
@@ -76,6 +77,15 @@ public static class DependencyInjection
             })
             .AddJwtBearer(o =>
             {
+                o.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var validator = context.HttpContext.RequestServices.GetRequiredService<UsuarioSessionValidator>();
+                        if (context.Principal is null || !await validator.EsValidaAsync(context.Principal))
+                            context.Fail("La sesion cambio o el usuario esta inactivo. Inicia sesion nuevamente.");
+                    }
+                };
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,

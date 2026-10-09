@@ -45,7 +45,7 @@ public class AuthController(
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest req)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.RefreshToken == req.RefreshToken);
-        if (user is null || user.RefreshTokenExpira < DateTime.UtcNow)
+        if (user is null || !user.Activo || user.RefreshTokenExpira is null || user.RefreshTokenExpira <= DateTime.UtcNow)
             return Unauthorized("Refresh token inválido o expirado.");
 
         return await EmitirTokensAsync(user);
@@ -69,25 +69,25 @@ public class AuthController(
     [Authorize(Roles = RolesApp.Admin)]
     public async Task<ActionResult<UsuarioInfo>> CrearUsuario(CrearUsuarioRequest req)
     {
-        if (!RolesApp.Todos.Contains(req.Rol))
-            return BadRequest($"Rol inválido. Válidos: {string.Join(", ", RolesApp.Todos)}.");
+        var error = await ValidarAccesoAsync(req.Nombre, req.Rol, req.Hoteles);
+        if (error is not null) return BadRequest(new { error });
 
-        if (RolesApp.UsaRestriccionHoteles(req.Rol) && req.Hoteles is not { Count: > 0 })
-            return BadRequest($"El rol {req.Rol} necesita al menos un hotel asignado.");
+        await using var transaction = await db.Database.BeginTransactionAsync();
 
         var user = new ApplicationUser
         {
-            UserName = req.Email,
-            Email = req.Email,
+            UserName = req.Email.Trim(),
+            Email = req.Email.Trim(),
             EmailConfirmed = true,
-            Nombre = req.Nombre
+            Nombre = req.Nombre.Trim()
         };
 
         var res = await userManager.CreateAsync(user, req.Password);
         if (!res.Succeeded)
             return BadRequest(res.Errors.Select(e => e.Description));
 
-        await userManager.AddToRoleAsync(user, req.Rol);
+        res = await userManager.AddToRoleAsync(user, req.Rol);
+        if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
 
         // Los roles operativos restringidos se asignan a hoteles concretos.
         if (RolesApp.UsaRestriccionHoteles(req.Rol) && req.Hoteles is { Count: > 0 })
@@ -97,7 +97,9 @@ public class AuthController(
             await db.SaveChangesAsync();
         }
 
-        return new UsuarioInfo(user.Id, user.Nombre, user.Email!, [req.Rol], req.Hoteles ?? []);
+        await transaction.CommitAsync();
+        return new UsuarioInfo(user.Id, user.Nombre, user.Email!, [req.Rol],
+            RolesApp.UsaRestriccionHoteles(req.Rol) ? req.Hoteles!.Distinct().ToArray() : []);
     }
 
     [HttpGet("usuarios")]
@@ -120,6 +122,59 @@ public class AuthController(
             u.Activo)).ToList();
     }
 
+    [HttpPut("usuarios/{id}")]
+    [Authorize(Roles = RolesApp.Admin)]
+    public async Task<ActionResult<UsuarioListaDto>> ActualizarUsuario(string id, ActualizarUsuarioRequest req)
+    {
+        var error = await ValidarAccesoAsync(req.Nombre, req.Rol, req.Hoteles);
+        if (error is not null) return BadRequest(new { error });
+
+        var usuario = await userManager.FindByIdAsync(id);
+        if (usuario is null) return NotFound();
+        var actual = await userManager.GetUserAsync(User);
+        if (actual?.Id == id && (!req.Activo || req.Rol != RolesApp.Admin))
+            return BadRequest(new { error = "No puedes desactivar tu cuenta ni quitarte el rol Admin." });
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        usuario.Nombre = req.Nombre.Trim();
+        usuario.Email = req.Email.Trim();
+        usuario.UserName = req.Email.Trim();
+        usuario.Activo = req.Activo;
+        var res = await userManager.UpdateAsync(usuario);
+        if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
+
+        if (!string.IsNullOrEmpty(req.Password))
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
+            res = await userManager.ResetPasswordAsync(usuario, token, req.Password);
+            if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
+        }
+
+        var roles = await userManager.GetRolesAsync(usuario);
+        res = await userManager.RemoveFromRolesAsync(usuario, roles.Where(r => r != req.Rol));
+        if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
+        if (!roles.Contains(req.Rol))
+        {
+            res = await userManager.AddToRoleAsync(usuario, req.Rol);
+            if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
+        }
+
+        var hoteles = RolesApp.UsaRestriccionHoteles(req.Rol) ? req.Hoteles!.Distinct().ToArray() : [];
+        var asignaciones = await db.UsuariosHoteles.Where(h => h.UsuarioId == id).ToListAsync();
+        db.UsuariosHoteles.RemoveRange(asignaciones.Where(h => !hoteles.Contains(h.HotelId)));
+        foreach (var hotelId in hoteles.Except(asignaciones.Select(h => h.HotelId)))
+            db.UsuariosHoteles.Add(new UsuarioHotel { UsuarioId = id, HotelId = hotelId });
+        await db.SaveChangesAsync();
+
+        // Los JWT emitidos antes del cambio dejan de autorizar con permisos antiguos.
+        usuario.RefreshToken = null;
+        usuario.RefreshTokenExpira = null;
+        res = await userManager.UpdateSecurityStampAsync(usuario);
+        if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
+        await transaction.CommitAsync();
+        return new UsuarioListaDto(id, usuario.Nombre, usuario.Email!, [req.Rol], hoteles, usuario.Activo);
+    }
+
     /// <summary>Activa o desactiva un usuario. Un usuario inactivo no puede iniciar sesión.</summary>
     [HttpPut("usuarios/{id}/activo")]
     [Authorize(Roles = RolesApp.Admin)]
@@ -139,8 +194,21 @@ public class AuthController(
             usuario.RefreshToken = null;
             usuario.RefreshTokenExpira = null;
         }
-        await userManager.UpdateAsync(usuario);
+        var res = await userManager.UpdateSecurityStampAsync(usuario);
+        if (!res.Succeeded) return BadRequest(res.Errors.Select(e => e.Description));
         return NoContent();
+    }
+
+    private async Task<string?> ValidarAccesoAsync(string nombre, string rol, IReadOnlyCollection<int>? hoteles)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "Ingresa el nombre del usuario.";
+        if (!RolesApp.Todos.Contains(rol)) return "Selecciona un rol valido.";
+        if (!RolesApp.UsaRestriccionHoteles(rol)) return null;
+        if (hoteles is not { Count: > 0 }) return $"El rol {rol} necesita al menos un establecimiento asignado.";
+        var ids = hoteles.Distinct().ToArray();
+        if (await db.Hoteles.CountAsync(h => ids.Contains(h.Id)) != ids.Length)
+            return "Uno o mas establecimientos no existen.";
+        return null;
     }
 
     private async Task<AuthResponse> EmitirTokensAsync(ApplicationUser user)
@@ -149,7 +217,7 @@ public class AuthController(
         var hoteles = await db.UsuariosHoteles.Where(uh => uh.UsuarioId == user.Id)
             .Select(uh => uh.HotelId).ToListAsync();
 
-        var tokens = jwt.Generar(user.Id, user.UserName!, roles, hoteles);
+        var tokens = jwt.Generar(user.Id, user.UserName!, roles, hoteles, user.SecurityStamp!);
 
         user.RefreshToken = tokens.RefreshToken;
         user.RefreshTokenExpira = DateTime.UtcNow.AddDays(7);
